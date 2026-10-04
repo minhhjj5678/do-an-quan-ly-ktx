@@ -73,14 +73,14 @@ class SinhVien(ThucTheCoTen, ThucTheLuuTruDuoc):
 
 
 class Phong(ThucTheCoTen, ThucTheLuuTruDuoc):
-    def __init__(self, ma: str, ten: str, suc_chua: int, gia_phong: float, toa_nha: str, tang: int, danh_sach_sinh_vien : list[str] | None = None):
+    def __init__(self, ma: str, ten: str, suc_chua: int, gia_phong: float, toa_nha: str, tang: int):
         ThucTheCoTen.__init__(self, ma, ten)
         ThucTheLuuTruDuoc.__init__(self)
         self.suc_chua = suc_chua
         self.gia_phong = gia_phong
         self.__toa_nha = toa_nha
         self.__tang = tang
-        self.__danh_sach_sinh_vien = danh_sach_sinh_vien if danh_sach_sinh_vien is not None else []
+        self.__danh_sach_sinh_vien = {}
 
     @property
     def suc_chua(self) -> int:
@@ -99,7 +99,7 @@ class Phong(ThucTheCoTen, ThucTheLuuTruDuoc):
         return self.__tang
 
     @property
-    def danh_sach_sinh_vien(self) -> list[str]:
+    def danh_sach_sinh_vien(self) -> dict[str, SinhVien]:
         return self.__danh_sach_sinh_vien.copy()
 
     ## TODO: các setter ném lỗi nếu giá trị không hợp lệ
@@ -130,18 +130,18 @@ class Phong(ThucTheCoTen, ThucTheLuuTruDuoc):
         pass
 
 class ToaNha(ThucTheCoTen, ThucTheLuuTruDuoc):
-    def __init__(self, ma: str, ten: str, so_tang: int, danh_sach_phong: list[str] | None = None):
+    def __init__(self, ma: str, ten: str, so_tang: int):
         ThucTheCoTen.__init__(self, ma, ten)
         ThucTheLuuTruDuoc.__init__(self)
         self.so_tang = so_tang
-        self.__danh_sach_phong = danh_sach_phong if danh_sach_phong is not None else []
+        self.__danh_sach_phong = {}
 
     @property
     def so_tang(self) -> int:
         return self.__so_tang
 
     @property
-    def danh_sach_phong(self) -> list[str]:
+    def danh_sach_phong(self) -> dict[str, Phong]:
         return self.__danh_sach_phong.copy()
 
     @property

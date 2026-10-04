@@ -7,10 +7,10 @@ class Xa(ThucTheCoTen):
 
 
 class Tinh(ThucTheCoTen):
-    def __init__(self, ma: str, ten: str, danh_sach_xa: list[Xa]):
+    def __init__(self, ma: str, ten: str, danh_sach_xa: dict[str, Xa]):
         super().__init__(ma, ten)
         self.__danh_sach_xa = danh_sach_xa
 
     @property
-    def danh_sach_xa(self) -> list[Xa]:
+    def danh_sach_xa(self) -> dict[str, Xa]:
         return self.__danh_sach_xa.copy()

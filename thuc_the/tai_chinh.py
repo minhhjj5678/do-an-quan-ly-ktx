@@ -26,7 +26,7 @@ class DichVuThem(ThucTheCoTen, ThucTheLuuTruDuoc):
 
 class HopDong(ThucTheGoc):
     # TODO: kiểm tra tính hợp lệ trước khi gán các biến
-    def __init__(self, ma: str, he_so_thang: int, ngay_bat_dau: date, ngay_ket_thuc: date, gia_phong: float, ma_sinh_vien: str, ma_phong: str, hoc_ky: str, dich_vu_them: list[str] | None = None):
+    def __init__(self, ma: str, he_so_thang: int, ngay_bat_dau: date, ngay_ket_thuc: date, gia_phong: float, ma_sinh_vien: str, ma_phong: str, hoc_ky: str, dich_vu_them: dict[str, DichVuThem] | None = None):
         super().__init__(ma)
         self.__ngay_bat_dau = ngay_bat_dau
         self.__he_so_thang = he_so_thang
@@ -34,7 +34,7 @@ class HopDong(ThucTheGoc):
         self.__gia_phong = gia_phong
         self.__ma_sinh_vien = ma_sinh_vien
         self.__ma_phong = ma_phong
-        self.__dich_vu_them = dich_vu_them if dich_vu_them is not None else []
+        self.__dich_vu_them = dich_vu_them if dich_vu_them is not None else {}
         self.__trang_thai = TrangThaiHopDong.CHUA_THANH_TOAN
         self.__hoc_ky = hoc_ky
 
@@ -63,7 +63,7 @@ class HopDong(ThucTheGoc):
         return self.__ma_phong
 
     @property
-    def dich_vu_them(self) -> list[str]:
+    def dich_vu_them(self) -> dict[str, DichVuThem]:
         return self.__dich_vu_them.copy()
 
     @property
