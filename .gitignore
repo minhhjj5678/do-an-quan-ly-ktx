@@ -1,0 +1,27 @@
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+env/
+
+# File build
+build/
+dist/
+
+# data
+du_lieu/*.json
+.sao_luu/
+
+.DS_Store
+Thumbs.db
+desktop.ini
+/*.bat
+/*.txt
