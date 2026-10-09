@@ -80,7 +80,7 @@ class Phong(ThucTheCoTen, ThucTheLuuTruDuoc):
         self.gia_phong = gia_phong
         self.__toa_nha = toa_nha
         self.__tang = tang
-        self.__danh_sach_sinh_vien = {}
+        self.__danh_sach_sinh_vien = set()
 
     @property
     def suc_chua(self) -> int:
@@ -99,7 +99,7 @@ class Phong(ThucTheCoTen, ThucTheLuuTruDuoc):
         return self.__tang
 
     @property
-    def danh_sach_sinh_vien(self) -> dict[str, SinhVien]:
+    def danh_sach_sinh_vien(self) -> set[str]:
         return self.__danh_sach_sinh_vien.copy()
 
     ## TODO: các setter ném lỗi nếu giá trị không hợp lệ
@@ -134,14 +134,14 @@ class ToaNha(ThucTheCoTen, ThucTheLuuTruDuoc):
         ThucTheCoTen.__init__(self, ma, ten)
         ThucTheLuuTruDuoc.__init__(self)
         self.so_tang = so_tang
-        self.__danh_sach_phong = {}
+        self.__danh_sach_phong = set()
 
     @property
     def so_tang(self) -> int:
         return self.__so_tang
 
     @property
-    def danh_sach_phong(self) -> dict[str, Phong]:
+    def danh_sach_phong(self) -> set[str]:
         return self.__danh_sach_phong.copy()
 
     @property
