@@ -16,7 +16,7 @@ T = TypeVar("T", bound=ThucTheGoc)
 class GiaoThucDieuPhoi(ABC):
     # CRUD
     @abstractmethod
-    def lay_tat_ca(self, loai_thuc_the: type[T], lay_luu_tru: bool = False) -> list[T]:
+    def lay_tat_ca(self, loai_thuc_the: type[T], lay_luu_tru: bool = False) -> dict[str, T]:
         """
         Trả về danh sách tất cả các thực thể thuộc loại được chỉ định.\n
         Nếu lay_luu_tru là True thì trả về cả các thực thể đã lưu trữ, ngược lại chỉ trả về các thực thể còn hoạt động.
@@ -46,7 +46,7 @@ class GiaoThucDieuPhoi(ABC):
     def lay_theo_ma(self, loai_thuc_the: type[T], ma: str, lay_luu_tru: bool = False) -> T: raise NotImplementedError
 
     @abstractmethod
-    def loc_theo_dieu_kien(self, loai_thuc_the: type[T], dieu_kien: Callable[[T], bool], lay_luu_tru: bool = False) -> list[T]:
+    def loc_theo_dieu_kien(self, loai_thuc_the: type[T], dieu_kien: Callable[[T], bool], lay_luu_tru: bool = False) -> dict[str, T]:
         """
         Lọc danh sách thực thể dựa trên một hàm điều kiện.
         """
@@ -162,7 +162,7 @@ class GiaoThucDieuPhoi(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def danh_sach_dia_ly(self) -> list[Tinh]:
+    def danh_sach_dia_ly(self) -> dict[str, Tinh]:
         """
         Dùng cho việc nhập địa chỉ thường trú của sinh viên.\n
         - Trả về: danh sách các tỉnh Việt Nam.
