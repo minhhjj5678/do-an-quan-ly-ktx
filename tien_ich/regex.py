@@ -30,7 +30,7 @@ def ktra_so(so: float, dieu_kien: Callable[[float], bool], thong_bao_loi: str | 
         ValueError: Số lượng phải lớn hơn 0
     ```
     """
-    if dieu_kien(so):
+    if so is not None and isinstance(so, (int, float)) and dieu_kien(so):
         return True
     if thong_bao_loi is not None:
         raise ValueError(thong_bao_loi)
@@ -58,7 +58,7 @@ def ktra_chuoi(chuoi: str, dieu_kien: Callable[[str], bool], thong_bao_loi: str 
         ValueError: Chuỗi không được rỗng
     ```
     """
-    if chuoi.strip() != "" and dieu_kien(chuoi):
+    if chuoi is not None and isinstance(chuoi, str) and chuoi.strip() != "" and dieu_kien(chuoi):
         return True
     if thong_bao_loi is not None:
         raise ValueError(thong_bao_loi)
@@ -86,7 +86,7 @@ def ktra_ngay(ngay: date, dieu_kien: Callable[[date], bool], thong_bao_loi: str 
         ValueError: Ngày phải sau ngày 31/12/2022
     ```
     """
-    if dieu_kien(ngay):
+    if ngay is not None and isinstance(ngay, date) and dieu_kien(ngay):
         return True
     if thong_bao_loi is not None:
         raise ValueError(thong_bao_loi)
