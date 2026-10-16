@@ -13,27 +13,19 @@ class GiaoThucLuuTru(ABC, Generic[T]):
     Giao thức lưu trữ dữ liệu, các tầng nghiệp vụ và giao diện sẽ tương tác với tầng lưu trữ thông qua giao thức này.
     """
     @abstractmethod
-    def doc(self) -> list[T]:
+    def doc(self) -> dict[str, T]:
         """
-        Đọc dữ liệu từ file dữ liệu, nếu không tồn tại thì trả về danh sách rỗng.
+        Đọc dữ liệu từ file dữ liệu và trả về dict với key là mã thực thể, nếu không tồn tại/file bị hỏng/mất đồng bộ thì đọc từ file sao lưu, nếu file sao lưu cũng vậy thì trả về dict rỗng.\n
+        Đối với api ngoài, khi file dữ liệu và file sao lưu cục bộ hỏng thì đọc dữ liệu trực tiếp từ api.\n
         Ném ValueError nếu file dữ liệu bị hỏng hoặc mất đồng bộ.
         """
         raise NotImplementedError
 
     @abstractmethod
-    def ghi(self, danh_sach: list[T], ghi_de: bool = True) -> None:
+    def ghi(self, danh_sach: dict[str, T]) -> None:
         """
-        Ghi danh sách thực thể vào file dữ liệu và file sao lưu.\n
-        Nếu ghi_de là True thì ghi đè lên file dữ liệu cũ, nếu False thì ghi thêm vào file dữ liệu cũ.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def doc_sao_luu(self) -> list[T]:
-        """
-        Đọc dữ liệu từ file sao lưu, nếu không tồn tại thì trả về danh sách rỗng.
-        Chỉ dùng khi file dữ liệu chính bị hỏng hoặc mất đồng bộ.\n
-        Đối với api ngoài, khi file dữ liệu và file sao lưu cục bộ hỏng thì đọc dữ liệu trực tiếp từ api.
+        Ghi danh sách thực thể vào file dữ liệu và file sao lưu.
+        Luôn ghi đè lên file dữ liệu cũ.
         """
         raise NotImplementedError
 

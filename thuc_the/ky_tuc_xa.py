@@ -1,3 +1,4 @@
+from thuc_the.tai_chinh import TienIchPhong
 from thuc_the.thuc_the_goc import ThucTheCoTen, ThucTheLuuTruDuoc
 
 
@@ -73,14 +74,17 @@ class SinhVien(ThucTheCoTen, ThucTheLuuTruDuoc):
 
 
 class Phong(ThucTheCoTen, ThucTheLuuTruDuoc):
-    def __init__(self, ma: str, ten: str, suc_chua: int, gia_phong: float, toa_nha: str, tang: int, danh_sach_sinh_vien : list[str] | None = None):
+    def __init__(self, ma: str, ten: str, suc_chua: int, gia_phong: float, toa_nha: str, tang: int, tien_ich_phong: set[str] | None = None):
         ThucTheCoTen.__init__(self, ma, ten)
         ThucTheLuuTruDuoc.__init__(self)
-        self.suc_chua = suc_chua
         self.gia_phong = gia_phong
         self.__toa_nha = toa_nha
         self.__tang = tang
-        self.__danh_sach_sinh_vien = danh_sach_sinh_vien if danh_sach_sinh_vien is not None else []
+        if tien_ich_phong is None:
+            tien_ich_phong = set()
+        self.__tien_ich_phong = set(tien_ich_phong)
+        self.__danh_sach_sinh_vien = set()
+        self.suc_chua = suc_chua
 
     @property
     def suc_chua(self) -> int:
@@ -91,6 +95,10 @@ class Phong(ThucTheCoTen, ThucTheLuuTruDuoc):
         return self.__gia_phong
 
     @property
+    def gia_co_ban(self) -> float:
+        return self.__gia_phong / self.suc_chua
+
+    @property
     def toa_nha(self) -> str | None:
         return self.__toa_nha
 
@@ -99,7 +107,11 @@ class Phong(ThucTheCoTen, ThucTheLuuTruDuoc):
         return self.__tang
 
     @property
-    def danh_sach_sinh_vien(self) -> list[str]:
+    def tien_ich_phong(self) -> set[str]:
+        return self.__tien_ich_phong.copy()
+
+    @property
+    def danh_sach_sinh_vien(self) -> set[str]:
         return self.__danh_sach_sinh_vien.copy()
 
     ## TODO: các setter ném lỗi nếu giá trị không hợp lệ
@@ -115,7 +127,7 @@ class Phong(ThucTheCoTen, ThucTheLuuTruDuoc):
     def con_phong(self) -> bool:
         return len(self.danh_sach_sinh_vien) < self.suc_chua
 
-    def them_sinh_vien(self, sinh_vien: SinhVien) -> None:
+    def them_sinh_vien(self, sinh_vien: SinhVien | str) -> None:
         """
         Thêm sinh viên vào phòng.
         Ném lỗi hợp lệ khi cần
@@ -129,19 +141,33 @@ class Phong(ThucTheCoTen, ThucTheLuuTruDuoc):
         """
         pass
 
+    def them_tien_ich(self, tien_ich: TienIchPhong | str) -> None:
+        """
+        Thêm tiện ích vào phòng.
+        Ném lỗi hợp lệ khi cần
+        """
+        pass
+
+    def xoa_tien_ich(self, tien_ich: TienIchPhong | str) -> None:
+        """
+        Xóa tiện ích khỏi phòng bằng đối tượng hoặc mã tiện ích.
+        Ném lỗi hợp lệ khi cần
+        """
+        pass
+
 class ToaNha(ThucTheCoTen, ThucTheLuuTruDuoc):
-    def __init__(self, ma: str, ten: str, so_tang: int, danh_sach_phong: list[str] | None = None):
+    def __init__(self, ma: str, ten: str, so_tang: int):
         ThucTheCoTen.__init__(self, ma, ten)
         ThucTheLuuTruDuoc.__init__(self)
         self.so_tang = so_tang
-        self.__danh_sach_phong = danh_sach_phong if danh_sach_phong is not None else []
+        self.__danh_sach_phong = set()
 
     @property
     def so_tang(self) -> int:
         return self.__so_tang
 
     @property
-    def danh_sach_phong(self) -> list[str]:
+    def danh_sach_phong(self) -> set[str]:
         return self.__danh_sach_phong.copy()
 
     @property
