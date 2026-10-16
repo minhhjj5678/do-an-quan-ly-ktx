@@ -5,6 +5,8 @@ from datetime import date
 from typing import Callable
 import re
 
+from tien_ich.tao_ma import SO_CHU_SO, TIEN_TO
+
 
 def ktra_so(so: float, dieu_kien: Callable[[float], bool], thong_bao_loi: str | None = None) -> bool:
     """
@@ -94,18 +96,31 @@ def la_so_duong(x: float) -> bool:
     return x > 0
 
 def la_sdt(x: str) -> bool:
-    return bool(re.match(r"^(03|05|07|08|09)\d{8}$", x))
+    """Số điện thoại VN: 10 chữ số, đầu số 03/05/07/08/09."""
+    # fullmatch: khớp TOÀN BỘ chuỗi (match + "$" vẫn cho qua ký tự xuống dòng ở cuối)
+    return isinstance(x, str) and re.fullmatch(r"(03|05|07|08|09)\d{8}", x) is not None
 
 def la_cccd(x: str) -> bool:
-    return bool(re.match(r"^0\d{11}$", x))
+    """Căn cước công dân: 12 chữ số, bắt đầu bằng 0."""
+    return isinstance(x, str) and re.fullmatch(r"0\d{11}", x) is not None
 
-# TODO: dùng regex để kiểm tra mã thực thể
-def la_ma_sinh_vien(x: str) -> bool: return True
-def la_ma_phong(x: str) -> bool: return True
-def la_ma_toa_nha(x: str) -> bool: return True
-def la_ma_hoa_don_thang(x: str) -> bool: return True
-def la_ma_dich_vu_them(x: str) -> bool: return True
-def la_ma_hop_dong(x: str) -> bool: return True
-def la_ma_vi_pham(x: str) -> bool: return True
-def la_ma_hoc_ky(x: str) -> bool: return True
+# ---- Kiểm tra mã thực thể ----
+# Mã có dạng <TIỀN TỐ><4 chữ số> (ví dụ SV0001), khớp với bộ sinh mã trong tao_ma.py.
+# Tiền tố và số chữ số lấy từ tao_ma.TIEN_TO / SO_CHU_SO nên không thể lệch với nơi sinh mã.
+_MAU_MA = {
+    loai: re.compile(rf"{re.escape(tien_to)}\d{{{SO_CHU_SO}}}")
+    for loai, tien_to in TIEN_TO.items()
+}
 
+def _la_ma(loai: str, x: str) -> bool:
+    """True nếu x là chuỗi và khớp TOÀN BỘ mẫu mã của loại thực thể `loai`."""
+    return isinstance(x, str) and _MAU_MA[loai].fullmatch(x) is not None
+
+def la_ma_sinh_vien(x: str) -> bool: return _la_ma("sinh_vien", x)
+def la_ma_phong(x: str) -> bool: return _la_ma("phong", x)
+def la_ma_toa_nha(x: str) -> bool: return _la_ma("toa_nha", x)
+def la_ma_hoa_don_thang(x: str) -> bool: return _la_ma("hoa_don_thang", x)
+def la_ma_dich_vu_them(x: str) -> bool: return _la_ma("dich_vu_them", x)
+def la_ma_hop_dong(x: str) -> bool: return _la_ma("hop_dong", x)
+def la_ma_vi_pham(x: str) -> bool: return _la_ma("vi_pham", x)
+def la_ma_hoc_ky(x: str) -> bool: return _la_ma("hoc_ky", x)
