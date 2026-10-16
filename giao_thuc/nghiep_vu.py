@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Callable, TypeVar, Concatenate, ParamSpec
+from typing import Callable, TypeVar
 
 from thuc_the.dia_ly import Tinh
 from thuc_the.hoc_vu import HocKy
@@ -11,7 +11,6 @@ from thuc_the.ky_tuc_xa import ToaNha
 from thuc_the.thuc_the_goc import ThucTheGoc, ThucTheLuuTruDuoc
 
 T = TypeVar("T", bound=ThucTheGoc)
-P = ParamSpec("P")
 
 # Phần B
 class GiaoThucDieuPhoi(ABC):
@@ -25,10 +24,9 @@ class GiaoThucDieuPhoi(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def tao_va_them(self, loai_thuc_the: Callable[Concatenate[str, P], T], /, *args: P.args, **kwargs: P.kwargs) -> T:
+    def them(self, loai_thuc_the: type[T], thuc_the: T) -> None:
         """
-        Tạo và thêm thực thể vào hệ thống.
-        Trả về thực thể đã tạo và thêm vào hệ thống.\n
+        Thêm thực thể vào hệ thống.\n
         Ném lỗi nếu logic nội tại hoặc dữ liệu chéo không hợp lệ trước khi thêm thực thể
         """
         raise NotImplementedError
