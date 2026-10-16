@@ -25,3 +25,8 @@ Thumbs.db
 desktop.ini
 /*.bat
 /*.txt
+
+__pycache__/
+*.pyc
+du_lieu/
+luu_tru_cu/

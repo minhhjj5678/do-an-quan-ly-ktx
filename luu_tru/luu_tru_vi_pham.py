@@ -1,27 +1,55 @@
-import json
-import os
-from typing import List
-from luu_tru.luu_tru_co_so import LuuTruCoSo
-from thuc_the.vi_pham import ViPham, ViPhamNoiQuy, ViPhamTaiSan
+# Phần C
+# Lưu trữ ViPham xuống file JSON (cau_hinh_tinh.FILE_VI_PHAM).
+#
+# ViPham có hai class con với thuộc tính riêng:
+#   - ViPhamNoiQuy: có hinh_thuc_ky_luat
+#   - ViPhamTaiSan: có tien_boi_thuong
+# Nếu chỉ lưu chung sẽ mất thông tin "là loại nào" và không dựng lại đúng được, nên mỗi mục
+# trong file có thêm khóa "loai" ghi tên loại cụ thể, và khi đọc dùng khóa đó để dựng đúng class.
+from datetime import date
+from typing import Any
+
+from luu_tru.luu_tru_json import LuuTruJson, khoi_phuc_trang_thai
+from thuc_the.vi_pham import TrangThaiViPham, ViPham, ViPhamNoiQuy, ViPhamTaiSan
 from tien_ich.cau_hinh_tinh import FILE_VI_PHAM
 
-class LuuTruViPham(LuuTruCoSo[ViPham]):
-    def __init__(self):
-        super().__init__(FILE_VI_PHAM, ViPham)
+LOAI_NOI_QUY = "ViPhamNoiQuy"
+LOAI_TAI_SAN = "ViPhamTaiSan"
 
-    def doc(self) -> List[ViPham]:
-        if not os.path.exists(self.duong_dan_chinh):
-            return []
-        try:
-            with open(self.duong_dan_chinh, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            danh_sach = []
-            for item in data:
-                # Phân loại để khởi tạo đúng class con
-                if item.get("loai_vi_pham") == "noi_quy" or "hinh_thuc_ky_luat" in item:
-                    danh_sach.append(ViPhamNoiQuy.from_dict(item) if hasattr(ViPhamNoiQuy, "from_dict") else item)
-                else:
-                    danh_sach.append(ViPhamTaiSan.from_dict(item) if hasattr(ViPhamTaiSan, "from_dict") else item)
-            return danh_sach
-        except Exception:
-            return self.doc_sao_luu()
+
+class LuuTruViPham(LuuTruJson[ViPham]):
+    TEN_FILE = FILE_VI_PHAM
+    LOAI = ViPham  # isinstance(ViPhamNoiQuy(...), ViPham) là True nên ghi được cả hai loại con
+
+    def _sang_dict(self, vp: ViPham) -> dict[str, Any]:
+        # Phần thuộc tính chung của mọi loại vi phạm
+        d: dict[str, Any] = {
+            "ma": vp.ma,
+            "sinh_vien": vp.sinh_vien,  # mã sinh viên
+            "ngay_vi_pham": vp.ngay_vi_pham.isoformat(),
+            "mo_ta": vp.mo_ta,
+            "trang_thai": vp.trang_thai.name,
+        }
+        # Phần riêng theo từng loại + khóa "loai" để đọc lại dựng đúng class
+        if isinstance(vp, ViPhamNoiQuy):
+            d["loai"] = LOAI_NOI_QUY
+            d["hinh_thuc_ky_luat"] = vp.hinh_thuc_ky_luat
+        elif isinstance(vp, ViPhamTaiSan):
+            d["loai"] = LOAI_TAI_SAN
+            d["tien_boi_thuong"] = vp.tien_boi_thuong
+        else:
+            raise TypeError(f"Chưa hỗ trợ lưu loại vi phạm {type(vp).__name__}")
+        return d
+
+    def _tu_dict(self, d: dict[str, Any]) -> ViPham:
+        ngay = date.fromisoformat(d["ngay_vi_pham"])
+        loai = d["loai"]
+        if loai == LOAI_NOI_QUY:
+            vp: ViPham = ViPhamNoiQuy(d["ma"], d["sinh_vien"], ngay, d["mo_ta"], d["hinh_thuc_ky_luat"])
+        elif loai == LOAI_TAI_SAN:
+            vp = ViPhamTaiSan(d["ma"], d["sinh_vien"], ngay, d["mo_ta"], d["tien_boi_thuong"])
+        else:
+            raise ValueError(f"Loại vi phạm không biết: {loai!r}")
+        # trang_thai được khai báo trong class ViPham (lớp cha) nên truyền ViPham, không phải lớp con
+        khoi_phuc_trang_thai(vp, ViPham, TrangThaiViPham[d["trang_thai"]])
+        return vp
