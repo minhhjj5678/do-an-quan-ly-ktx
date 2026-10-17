@@ -42,7 +42,7 @@ class TienIchPhong(DichVuCoSo):
 
 class HopDong(ThucTheGoc):
     # TODO: kiểm tra tính hợp lệ trước khi gán các biến
-    def __init__(self, ma: str, he_so_thang: int, ngay_bat_dau: date, ngay_ket_thuc: date, gia_co_ban: float, tien_dat_coc: float, ma_sinh_vien: str, ma_phong: str, hoc_ky: str, dich_vu_them: dict[str, float] | None = None, phi_tien_nghi: float = 0):
+    def __init__(self, ma: str, he_so_thang: int, ngay_bat_dau: date, ngay_ket_thuc: date, gia_co_ban: float, tien_dat_coc: float, ma_sinh_vien: str, ma_phong: str, hoc_ky: str, dich_vu_them: dict[str, float] | None = None, phi_tien_nghi: float = 0, trang_thai: TrangThaiHopDong = TrangThaiHopDong.CHUA_THANH_TOAN):
         super().__init__(ma)
         self.__ngay_bat_dau = ngay_bat_dau
         self.__he_so_thang = he_so_thang
@@ -55,6 +55,8 @@ class HopDong(ThucTheGoc):
         self.__phi_tien_nghi = phi_tien_nghi
         self.__trang_thai = TrangThaiHopDong.CHUA_THANH_TOAN
         self.__hoc_ky = hoc_ky
+
+        self.__trang_thai = trang_thai
 
     @property
     def ngay_bat_dau(self) -> date:
@@ -115,7 +117,7 @@ class HopDong(ThucTheGoc):
 
 class HoaDonThang(ThucTheGoc):
     # TODO: kiểm tra tính hợp lệ trước khi gán các biến
-    def __init__(self, ma: str, thang: int, dien_cu: int, dien_moi: int, don_gia_dien: float, nuoc_cu: int, nuoc_moi: int, don_gia_nuoc: float, phong: str, han_chot: date):
+    def __init__(self, ma: str, thang: int, dien_cu: int, dien_moi: int, don_gia_dien: float, nuoc_cu: int, nuoc_moi: int, don_gia_nuoc: float, phong: str, han_chot: date, trang_thai: TrangThaiHoaDon = TrangThaiHoaDon.CHUA_THANH_TOAN):
         super().__init__(ma)
         self.__thang = thang
         self.__dien_cu = dien_cu
@@ -126,7 +128,7 @@ class HoaDonThang(ThucTheGoc):
         self.__don_gia_nuoc = don_gia_nuoc
         self.__phong = phong
         self.__han_chot = han_chot
-        self.__trang_thai = TrangThaiHoaDon.CHUA_THANH_TOAN
+        self.__trang_thai = trang_thai
 
     @property
     def thang(self) -> int:
