@@ -108,3 +108,14 @@ def la_ma_dich_vu_them(x: str) -> bool: return True
 def la_ma_hop_dong(x: str) -> bool: return True
 def la_ma_vi_pham(x: str) -> bool: return True
 def la_ma_hoc_ky(x: str) -> bool: return True
+
+# ---- Tài khoản ----
+# Quy ước do Phần C tự đặt (đề không quy định), cần đổi thì sửa tại đây là đủ vì cả giao diện lẫn nghiệp vụ đều gọi hai hàm này.
+def la_ten_dang_nhap(x: str) -> bool:
+    """Tên đăng nhập: 3-30 ký tự gồm chữ cái không dấu, chữ số, dấu gạch dưới hoặc dấu chấm."""
+    return isinstance(x, str) and re.fullmatch(r"[A-Za-z0-9_.]{3,30}", x) is not None
+ 
+def la_mat_khau(x: str) -> bool:
+    """Mật khẩu: tối thiểu 6 ký tự (không bắt buộc ký tự đặc biệt)."""
+    return isinstance(x, str) and len(x) >= 6
+ 
