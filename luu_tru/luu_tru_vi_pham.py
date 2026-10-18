@@ -9,7 +9,7 @@
 from datetime import date
 from typing import Any
 
-from luu_tru.luu_tru_json import LuuTruJson, khoi_phuc_trang_thai
+from luu_tru.luu_tru_json import LuuTruJson
 from thuc_the.vi_pham import TrangThaiViPham, ViPham, ViPhamNoiQuy, ViPhamTaiSan
 from tien_ich.cau_hinh_tinh import FILE_VI_PHAM
 
@@ -50,6 +50,7 @@ class LuuTruViPham(LuuTruJson[ViPham]):
             vp = ViPhamTaiSan(d["ma"], d["sinh_vien"], ngay, d["mo_ta"], d["tien_boi_thuong"])
         else:
             raise ValueError(f"Loại vi phạm không biết: {loai!r}")
-        # trang_thai được khai báo trong class ViPham (lớp cha) nên truyền ViPham, không phải lớp con
-        khoi_phuc_trang_thai(vp, ViPham, TrangThaiViPham[d["trang_thai"]])
+        # ViPham không nhận trạng thái trong hàm khởi tạo nhưng có hàm công khai xu_ly() để chuyển sang "đã xử lý"
+        if TrangThaiViPham[d["trang_thai"]] == TrangThaiViPham.DA_XU_LY:
+            vp.xu_ly()
         return vp

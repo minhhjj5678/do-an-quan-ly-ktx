@@ -3,6 +3,10 @@
 # Triển khai GiaoThucPhienLamViec; nhận tầng lưu trữ tài khoản qua hàm khởi tạo (tiêm phụ thuộc),
 # nên file này không biết dữ liệu nằm ở đâu, chỉ gọi doc/ghi qua GiaoThucLuuTru.
 #
+# Cách làm việc với dữ liệu: danh sách tài khoản chỉ được ĐỌC TỪ FILE MỘT LẦN lúc khởi tạo rồi giữ trong
+# bộ nhớ (self._tai_khoan). Mọi thao tác sau đó (đăng nhập, tạo tài khoản, đổi mật khẩu) làm việc trên bản
+# trong bộ nhớ, và chỉ GHI xuống file khi có thay đổi; không đọc lại file.
+#
 # Lưu ý quan trọng: ở đây KHÔNG dùng TaiKhoan.kiem_tra() và TaiKhoan.doi_mat_khau() của thực thể,
 # vì hiện hai hàm đó là hàm giữ chỗ của phần B (kiem_tra luôn trả True => ai nhập mật khẩu gì cũng qua).
 # Việc so mật khẩu tự làm bằng tien_ich/bam_mat_khau.py; đổi mật khẩu thì tạo lại đối tượng TaiKhoan mới.
@@ -17,6 +21,7 @@ from tien_ich.regex import la_ma_sinh_vien, la_mat_khau, la_ten_dang_nhap
 # Dùng chung một thông báo cho "không có tài khoản" và "sai mật khẩu" để người ngoài
 # không dò được tên đăng nhập nào tồn tại.
 _LOI_SAI_THONG_TIN = "Sai tên đăng nhập hoặc mật khẩu"
+_LOI_MAT_KHAU = "Mật khẩu phải có ít nhất 6 ký tự, chỉ gồm chữ cái tiếng Anh không dấu, chữ số và ký hiệu (không có khoảng trắng)"
 
 
 @cache
@@ -29,41 +34,32 @@ def _ma_bam_gia() -> str:
 class PhienLamViec(GiaoThucPhienLamViec):
     def __init__(self, luu_tru_tai_khoan: GiaoThucLuuTru[TaiKhoan]) -> None:
         self._luu_tru = luu_tru_tai_khoan
+        # Đọc file đúng MỘT lần ở đây; dict {tên đăng nhập: TaiKhoan}. Lớp lưu trữ đã tự xử lý file hỏng/bị sửa.
+        self._tai_khoan: dict[str, TaiKhoan] = dict(self._luu_tru.doc())
         self._tai_khoan_hien_tai: TaiKhoan | None = None  # None = chưa ai đăng nhập
 
     # ---- Hàm hỗ trợ nội bộ ----
-    def _doc_tai_khoan(self) -> list[TaiKhoan]:
+    def _luu(self, tai_khoan_moi: dict[str, TaiKhoan]) -> None:
         """
-        Đọc danh sách tài khoản. Nếu file chính hỏng hoặc bị sửa ngoài app (ValueError) thì
-        đọc từ file sao lưu rồi ghi ngược lại để khôi phục file chính. Nếu sao lưu cũng hỏng thì
-        để ValueError nổi lên cho giao diện báo lỗi.
+        Ghi bản danh sách mới xuống file, GHI THÀNH CÔNG rồi mới thay bản trong bộ nhớ.
+        Nhờ vậy nếu ghi file lỗi thì bộ nhớ vẫn khớp với file, không bị lệch.
         """
-        try:
-            return self._luu_tru.doc()
-        except ValueError:
-            danh_sach = self._luu_tru.doc_sao_luu()
-            self._luu_tru.ghi(danh_sach)
-            return danh_sach
+        self._luu_tru.ghi(tai_khoan_moi)
+        self._tai_khoan = tai_khoan_moi
 
-    @staticmethod
-    def _tim(danh_sach: list[TaiKhoan], ten_dang_nhap: str) -> TaiKhoan | None:
-        return next((tk for tk in danh_sach if tk.ma == ten_dang_nhap), None)
-
-    def _thay_the(self, danh_sach: list[TaiKhoan], cu: TaiKhoan, mat_khau_bam_moi: str) -> TaiKhoan:
+    def _doi_mat_khau_bam(self, cu: TaiKhoan, mat_khau_bam_moi: str) -> None:
         """
         Đổi mật khẩu bằng cách dựng một TaiKhoan mới (thực thể không có setter cho mật khẩu),
-        giữ nguyên tên, loại, chủ thể và trạng thái hoạt động; thay vào đúng vị trí cũ rồi ghi xuống file.
+        giữ nguyên tên, loại, chủ thể và trạng thái hoạt động.
         """
         moi = TaiKhoan(cu.ma, mat_khau_bam_moi, cu.loai_tai_khoan, cu.ma_chu_the)
         if not cu.con_hoat_dong:
             moi.luu_tru()
-        vi_tri = danh_sach.index(cu)
-        danh_sach[vi_tri] = moi
-        self._luu_tru.ghi(danh_sach)
+        # {**dict_cu, khóa: giá_trị_mới} thay giá trị tại ĐÚNG vị trí cũ nên thứ tự tài khoản không đổi
+        self._luu({**self._tai_khoan, cu.ma: moi})
         # Nếu vừa đổi mật khẩu của chính người đang đăng nhập thì cập nhật đối tượng đang giữ
         if self._tai_khoan_hien_tai is not None and self._tai_khoan_hien_tai.ma == moi.ma:
             self._tai_khoan_hien_tai = moi
-        return moi
 
     # ---- Giao thức ----
     @property
@@ -84,14 +80,12 @@ class PhienLamViec(GiaoThucPhienLamViec):
         if not la_ten_dang_nhap(tai_khoan):
             raise ValueError("Tên đăng nhập gồm 3-30 ký tự: chữ không dấu, số, dấu _ hoặc dấu .")
         if not la_mat_khau(mat_khau):
-            raise ValueError("Mật khẩu phải có ít nhất 6 ký tự")
+            raise ValueError(_LOI_MAT_KHAU)
         if not isinstance(loai_tai_khoan, LoaiTaiKhoan):
             raise ValueError("Loại tài khoản không hợp lệ")
 
-        danh_sach = self._doc_tai_khoan()
-
         # Kiểm tra quyền
-        if danh_sach:
+        if self._tai_khoan:
             if self._tai_khoan_hien_tai is None:
                 raise ValueError("Cần đăng nhập bằng tài khoản quản trị để tạo tài khoản")
             if not self._tai_khoan_hien_tai.co_quyen_quan_tri:
@@ -99,27 +93,27 @@ class PhienLamViec(GiaoThucPhienLamViec):
         elif loai_tai_khoan != LoaiTaiKhoan.QUAN_TRI_VIEN:
             raise ValueError("Tài khoản đầu tiên của hệ thống phải là quản trị viên")
 
-        if self._tim(danh_sach, tai_khoan) is not None:
+        if tai_khoan in self._tai_khoan:
             raise ValueError("Tên đăng nhập đã tồn tại")
 
         # Mã chủ thể: sinh viên thì bắt buộc, quản trị viên thì không có
         if loai_tai_khoan == LoaiTaiKhoan.SINH_VIEN:
             if ma_chu_the is None or not la_ma_sinh_vien(ma_chu_the):
                 raise ValueError("Tài khoản sinh viên cần có mã sinh viên hợp lệ")
-            if any(tk.ma_chu_the == ma_chu_the for tk in danh_sach):
+            if any(tk.ma_chu_the == ma_chu_the for tk in self._tai_khoan.values()):
                 raise ValueError("Sinh viên này đã có tài khoản")
         else:
             ma_chu_the = None
 
         moi = TaiKhoan(tai_khoan, bam_mat_khau(mat_khau), loai_tai_khoan, ma_chu_the)
-        self._luu_tru.ghi([moi], ghi_de=False)  # ghi thêm vào cuối, không đụng các tài khoản cũ
+        self._luu({**self._tai_khoan, tai_khoan: moi})
 
     def dang_nhap(self, tai_khoan: str, mat_khau: str) -> None:
         """Đăng nhập. Ném ValueError nếu đã đăng nhập, sai thông tin, hoặc tài khoản đã ngừng hoạt động."""
         if self._tai_khoan_hien_tai is not None:
             raise ValueError("Đã đăng nhập, hãy đăng xuất trước")
 
-        tk = self._tim(self._doc_tai_khoan(), tai_khoan)
+        tk = self._tai_khoan.get(tai_khoan)
         if tk is None:
             kiem_tra_mat_khau(mat_khau, _ma_bam_gia())  # làm cho tốn thời gian như trường hợp có tài khoản
             raise ValueError(_LOI_SAI_THONG_TIN)
@@ -146,13 +140,10 @@ class PhienLamViec(GiaoThucPhienLamViec):
         if self._tai_khoan_hien_tai is None:
             raise ValueError("Chưa đăng nhập")
         if not la_mat_khau(mat_khau_moi):
-            raise ValueError("Mật khẩu mới phải có ít nhất 6 ký tự")
-
-        danh_sach = self._doc_tai_khoan()
+            raise ValueError(_LOI_MAT_KHAU)
 
         if tai_khoan is None:
-            # Tự đổi: lấy bản MỚI NHẤT trong file (không dùng đối tượng đã giữ từ lúc đăng nhập, có thể đã cũ)
-            hien_tai = self._tim(danh_sach, self._tai_khoan_hien_tai.ma)
+            hien_tai = self._tai_khoan.get(self._tai_khoan_hien_tai.ma)
             if hien_tai is None:
                 raise ValueError("Tài khoản hiện tại không còn tồn tại")
             if mat_khau_cu is None:
@@ -161,12 +152,12 @@ class PhienLamViec(GiaoThucPhienLamViec):
                 raise ValueError("Mật khẩu cũ không đúng")
             if mat_khau_cu == mat_khau_moi:
                 raise ValueError("Mật khẩu mới phải khác mật khẩu cũ")
-            self._thay_the(danh_sach, hien_tai, bam_mat_khau(mat_khau_moi))
+            self._doi_mat_khau_bam(hien_tai, bam_mat_khau(mat_khau_moi))
         else:
             # Quản trị viên đặt lại mật khẩu cho tài khoản khác
             if not self._tai_khoan_hien_tai.co_quyen_quan_tri:
                 raise ValueError("Chỉ quản trị viên mới được đặt lại mật khẩu của tài khoản khác")
-            dich = self._tim(danh_sach, tai_khoan)
+            dich = self._tai_khoan.get(tai_khoan)
             if dich is None:
                 raise ValueError("Tài khoản không tồn tại")
-            self._thay_the(danh_sach, dich, bam_mat_khau(mat_khau_moi))
+            self._doi_mat_khau_bam(dich, bam_mat_khau(mat_khau_moi))

@@ -4,9 +4,9 @@
 # Nguồn dữ liệu: API công cộng https://provinces.open-api.vn/ (bản v2 = sau sáp nhập 07/2025,
 # chỉ còn hai cấp Tỉnh -> Xã/Phường, khớp với dropdown tỉnh -> xã của màn hình sinh viên).
 #
-# Chiến lược (theo đúng thiết kế trong giao_thuc/luu_tru.py):
+# Chiến lược (theo đúng thiết kế trong giao_thuc/luu_tru.py), toàn bộ nằm trong doc():
 #   1. Ưu tiên đọc file cục bộ du_lieu/dia_ly.json (nhanh, chạy được khi mất mạng)
-#   2. File chính hỏng  -> tầng trên gọi doc_sao_luu() để đọc file sao lưu
+#   2. File chính hỏng/chưa có/bị sửa ngoài app -> lớp cha tự rơi về file sao lưu
 #   3. Sao lưu cũng hỏng/chưa có -> đọc trực tiếp từ API, và lưu lại xuống file cho lần sau
 import json
 import urllib.request
@@ -25,6 +25,12 @@ THOI_GIAN_CHO_GIAY = 20
 class LuuTruDiaLy(LuuTruJson[Tinh]):
     TEN_FILE = FILE_DIA_LY
     LOAI = Tinh
+
+    def __init__(self) -> None:
+        super().__init__()
+        # Đã thử gọi API mà lỗi (mất mạng...) thì không thử lại trong lần chạy này, tránh mỗi lần mở form
+        # lại treo giao diện đến hết thời gian chờ. Mở lại ứng dụng khi có mạng thì sẽ thử lại.
+        self._da_loi_api = False
 
     # ---- Đổi Tinh <-> dict để lưu JSON ----
     def _sang_dict(self, tinh: Tinh) -> dict[str, Any]:
@@ -45,28 +51,30 @@ class LuuTruDiaLy(LuuTruJson[Tinh]):
             return json.loads(phan_hoi.read().decode("utf-8"))
 
     @staticmethod
-    def _phan_tich_api(du_lieu: Any) -> list[Tinh]:
+    def _phan_tich_api(du_lieu: Any) -> dict[str, Tinh]:
         """
-        Đổi JSON của API thành danh sách Tinh. Mỗi tỉnh trong API có dạng:
+        Đổi JSON của API thành dict {mã tỉnh: Tinh}. Mỗi tỉnh trong API có dạng:
             {"name": "Thành phố Hà Nội", "code": 1, ..., "wards": [{"name": "Phường Ba Đình", "code": 4, ...}, ...]}
         Mã trong API là số nguyên, còn ma của thực thể là chuỗi nên đổi bằng str().
         Ném ValueError nếu cấu trúc khác dự kiến (ví dụ API đổi định dạng).
         """
         if not isinstance(du_lieu, list) or not du_lieu:
             raise ValueError("API địa lý trả về dữ liệu rỗng hoặc sai cấu trúc")
-        ket_qua: list[Tinh] = []
+        ket_qua: dict[str, Tinh] = {}
         try:
             for tinh in du_lieu:
                 cac_xa = tinh["wards"]
                 if not isinstance(cac_xa, list):  # wards = null nghĩa là thiếu depth=2
                     raise ValueError("Thiếu danh sách xã (wards)")
-                ket_qua.append(Tinh(str(tinh["code"]), tinh["name"],
-                                    [Xa(str(xa["code"]), xa["name"]) for xa in cac_xa]))
+                ma = str(tinh["code"])
+                if ma in ket_qua:
+                    raise ValueError(f"Mã tỉnh bị trùng: {ma}")
+                ket_qua[ma] = Tinh(ma, tinh["name"], [Xa(str(xa["code"]), xa["name"]) for xa in cac_xa])
         except (KeyError, TypeError, ValueError) as loi:
             raise ValueError(f"API địa lý trả về dữ liệu không đúng định dạng: {loi!r}") from loi
         return ket_qua
 
-    def tai_tu_api(self) -> list[Tinh]:
+    def tai_tu_api(self) -> dict[str, Tinh]:
         """Tải danh sách tỉnh/xã từ API (không lưu). Ném ValueError nếu mất mạng, quá thời gian hoặc dữ liệu sai."""
         try:
             du_lieu = self._goi_api()
@@ -74,37 +82,23 @@ class LuuTruDiaLy(LuuTruJson[Tinh]):
             raise ValueError(f"Không tải được dữ liệu địa lý từ API: {loi}") from loi
         return self._phan_tich_api(du_lieu)
 
-    def _tai_va_luu(self) -> list[Tinh]:
+    def _tai_va_luu(self) -> dict[str, Tinh]:
         """Tải từ API rồi ghi xuống file chính + sao lưu để lần sau không cần mạng."""
         danh_sach = self.tai_tu_api()
         self.ghi(danh_sach)
         return danh_sach
 
     # ---- Ghi đè hành vi đọc ----
-    def doc(self) -> list[Tinh]:
+    def doc(self) -> dict[str, Tinh]:
         """
-        Đọc địa lý từ file cục bộ.
-        - File hỏng: ném ValueError như giao thức (tầng trên sẽ gọi doc_sao_luu()).
-        - File chưa có (lần chạy đầu): tự tải từ API một lần rồi lưu lại. Nếu lúc đó mất mạng
-          thì trả về danh sách rỗng, lần gọi sau sẽ thử lại.
+        Đọc địa lý: file cục bộ, rồi file sao lưu (lớp cha lo), rồi cuối cùng là API.
+        Nếu mất mạng và không còn dữ liệu cục bộ nào thì trả về dict rỗng.
         """
         danh_sach = super().doc()
-        if danh_sach:
+        if danh_sach or self._da_loi_api:
             return danh_sach
         try:
             return self._tai_va_luu()
         except ValueError:
-            return []
-
-    def doc_sao_luu(self) -> list[Tinh]:
-        """
-        Đọc từ file sao lưu; nếu sao lưu cũng hỏng hoặc chưa có thì đọc trực tiếp từ API
-        (và lưu lại, khôi phục luôn cả file chính). Ném ValueError nếu API cũng không dùng được.
-        """
-        try:
-            danh_sach = super().doc_sao_luu()
-            if danh_sach:
-                return danh_sach
-        except ValueError:
-            pass  # file sao lưu hỏng -> chuyển sang API
-        return self._tai_va_luu()
+            self._da_loi_api = True
+            return {}

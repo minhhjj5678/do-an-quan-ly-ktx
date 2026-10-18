@@ -1,7 +1,7 @@
 # Phần C
-# Lớp cơ sở dùng chung cho 8 lớp lưu trữ. Lớp này lo TOÀN BỘ phần việc nặng:
+# Lớp cơ sở dùng chung cho các lớp lưu trữ. Lớp này lo TOÀN BỘ phần việc nặng:
 #   - đọc/ghi file JSON an toàn (ghi nguyên tử, không để file nửa chừng)
-#   - sao lưu sau mỗi lần ghi
+#   - sao lưu sau mỗi lần ghi, tự rơi về bản sao lưu khi file chính hỏng
 #   - phát hiện file bị sửa ngoài ứng dụng bằng dấu thời gian
 # Mỗi lớp lưu trữ cụ thể (LuuTruSinhVien, LuuTruPhong...) chỉ cần khai báo:
 #   - TEN_FILE: tên file dữ liệu
@@ -20,25 +20,6 @@ from tien_ich.tap_tin import (
     lay_duong_dan_du_lieu,
     lay_duong_dan_sao_luu,
 )
-
-
-def khoi_phuc_trang_thai(thuc_the: object, lop_khai_bao: type, gia_tri: object) -> None:
-    """
-    Gán lại thuộc tính trạng thái (trang_thai) của hợp đồng / hóa đơn / vi phạm khi đọc từ file.
-
-    Vì sao cần: các class này khởi tạo trạng thái mặc định là "chưa thanh toán/chưa xử lý" và
-    KHÔNG có setter, trong khi file có thể ghi trạng thái "đã thanh toán". Do không được sửa
-    package thuc_the/, ta gán thẳng vào thuộc tính private.
-
-    Python đổi tên thuộc tính private "__trang_thai" khai báo trong class X thành "_X__trang_thai"
-    (name mangling), nên phải truyền đúng class đã KHAI BÁO thuộc tính (ví dụ ViPham chứ không phải ViPhamNoiQuy).
-    Mọi chỗ gán kiểu này gom về đúng một hàm này để sau này dễ sửa nếu phần B đổi cách lưu trạng thái.
-    """
-    ten_thuoc_tinh = f"_{lop_khai_bao.__name__}__trang_thai"
-    if not hasattr(thuc_the, ten_thuoc_tinh):
-        # Phần B đã đổi tên thuộc tính -> báo lỗi rõ ràng thay vì âm thầm đọc sai dữ liệu
-        raise ValueError(f"{lop_khai_bao.__name__} không còn thuộc tính {ten_thuoc_tinh}, cần cập nhật khoi_phuc_trang_thai")
-    setattr(thuc_the, ten_thuoc_tinh, gia_tri)
 
 
 def khoi_phuc_hoat_dong(thuc_the: ThucTheLuuTruDuoc, con_hoat_dong: bool) -> None:
@@ -101,14 +82,14 @@ class LuuTruJson(GiaoThucLuuTru[T]):
         return self.LOAI  # type: ignore[return-value]
 
     # ---- Đọc ----
-    def _doc_file(self, duong_dan: str) -> list[T]:
+    def _doc_file(self, duong_dan: str) -> dict[str, T]:
         """
-        Đọc một file JSON và dựng lại danh sách thực thể.
-        - File không tồn tại: trả về danh sách rỗng.
+        Đọc một file JSON và dựng lại dict {mã: thực thể}.
+        - File không tồn tại: trả về dict rỗng.
         - File hỏng (không đọc được, sai cấu trúc, thiếu trường, trùng mã): ném ValueError.
         """
         if not os.path.exists(duong_dan):
-            return []
+            return {}
 
         try:
             with open(duong_dan, "r", encoding="utf-8") as f:
@@ -119,71 +100,82 @@ class LuuTruJson(GiaoThucLuuTru[T]):
         if not isinstance(du_lieu, list):
             raise ValueError(f"File {os.path.basename(duong_dan)} sai cấu trúc: phải là một danh sách")
 
-        ket_qua: list[T] = []
-        ma_da_thay: set[str] = set()
+        ket_qua: dict[str, T] = {}
         for vi_tri, muc in enumerate(du_lieu):
             try:
                 thuc_the = self._tu_dict(muc)
             except (KeyError, TypeError, AttributeError, ValueError) as loi:
                 raise ValueError(f"File {os.path.basename(duong_dan)} hỏng ở mục thứ {vi_tri}: {loi!r}") from loi
-            if thuc_the.ma in ma_da_thay:
+            if thuc_the.ma in ket_qua:
                 raise ValueError(f"File {os.path.basename(duong_dan)} có mã trùng lặp: {thuc_the.ma}")
-            ma_da_thay.add(thuc_the.ma)
-            ket_qua.append(thuc_the)
+            ket_qua[thuc_the.ma] = thuc_the
         return ket_qua
 
-    def doc(self) -> list[T]:
+    def doc(self) -> dict[str, T]:
         """
-        Đọc dữ liệu từ file chính.
-        Ném ValueError nếu file hỏng, hoặc (ở lần đọc đầu tiên) nếu file bị sửa ngoài ứng dụng.
-        Khi gặp ValueError, tầng trên nên gọi doc_sao_luu() rồi ghi() lại để khôi phục.
-        """
-        if not self._da_kiem_tra_khoi_dong:
-            if self.co_bi_chinh_sua():
-                raise ValueError(f"File {self.TEN_FILE} đã bị chỉnh sửa ngoài ứng dụng hoặc bị mất đồng bộ")
-            # Chỉ đánh dấu "đã kiểm tra" khi file hợp lệ; nếu chưa khôi phục thì lần doc() sau vẫn báo lỗi tiếp
-            self._da_kiem_tra_khoi_dong = True
-        return self._doc_file(self._duong_dan_chinh)
+        Đọc dữ liệu, trả về dict với khóa là mã thực thể.
 
-    def doc_sao_luu(self) -> list[T]:
-        """Đọc từ file sao lưu (trong thư mục .sao_luu). Chỉ dùng khi file chính hỏng."""
-        return self._doc_file(self._duong_dan_sao_luu)
+        Thứ tự ưu tiên:
+          1. File chính, nếu đọc được và (ở lần đọc đầu tiên) không bị sửa ngoài ứng dụng.
+          2. File sao lưu, nếu file chính không tồn tại / hỏng / bị sửa ngoài ứng dụng.
+             Dùng được bản sao lưu thì ghi ngược lại để khôi phục file chính.
+          3. Dict rỗng, nếu không còn nguồn cục bộ nào dùng được.
+        """
+        lan_dau = not self._da_kiem_tra_khoi_dong
+        self._da_kiem_tra_khoi_dong = True
+        chinh, sao_luu = self._duong_dan_chinh, self._duong_dan_sao_luu
+
+        du_lieu_chinh: dict[str, T] | None = None
+        if os.path.exists(chinh):
+            try:
+                du_lieu_chinh = self._doc_file(chinh)
+            except ValueError:
+                du_lieu_chinh = None  # file hỏng, thử bản sao lưu bên dưới
+        # Kiểm tra sửa ngoài app chỉ ở lần đọc đầu; co_bi_chinh_sua() cũng trả True khi file chính bị xóa
+        bi_chinh_sua = lan_dau and self.co_bi_chinh_sua()
+        if du_lieu_chinh is not None and not bi_chinh_sua:
+            return du_lieu_chinh
+
+        du_lieu_sao_luu: dict[str, T] | None = None
+        if os.path.exists(sao_luu):
+            try:
+                du_lieu_sao_luu = self._doc_file(sao_luu)
+            except ValueError:
+                du_lieu_sao_luu = None  # sao lưu cũng hỏng
+        if du_lieu_sao_luu is not None:
+            try:
+                self.ghi(du_lieu_sao_luu)  # khôi phục file chính (và dấu thời gian) từ bản sao lưu
+            except OSError:
+                pass  # không ghi được (ví dụ ổ đĩa chỉ đọc) thì vẫn dùng dữ liệu đã đọc
+            return du_lieu_sao_luu
+
+        # Không có sao lưu dùng được: file chính chỉ bị đánh dấu "sửa ngoài app" nhưng vẫn đọc được thì giữ dữ liệu đó
+        return du_lieu_chinh if du_lieu_chinh is not None else {}
 
     # ---- Ghi ----
-    # Dùng lại hàm ghi_nguyen_tu ở đầu file (xem giải thích ở đó)
-    _ghi_nguyen_tu = staticmethod(ghi_nguyen_tu)
-
-    def ghi(self, danh_sach: list[T], ghi_de: bool = True) -> None:
+    def ghi(self, danh_sach: dict[str, T]) -> None:
         """
-        Ghi danh sách thực thể xuống file chính + file sao lưu + file dấu thời gian.
-
-        - ghi_de=True: thay toàn bộ nội dung file bằng danh_sach.
-        - ghi_de=False: giữ dữ liệu cũ và ghi thêm danh_sach vào cuối.
-        Ném TypeError nếu có phần tử sai loại, ValueError nếu trùng mã (hoặc file cũ hỏng khi ghi thêm).
+        Ghi toàn bộ dict {mã: thực thể} xuống file chính + file sao lưu + file dấu thời gian.
+        Luôn ghi đè lên nội dung cũ.
+        Ném TypeError nếu không phải dict hoặc có phần tử sai loại, ValueError nếu khóa không khớp mã thực thể.
         """
-        moi = list(danh_sach)  # danh_sach có thể là generator/set -> chuyển thành list để duyệt nhiều lần
-        for thuc_the in moi:
+        if not isinstance(danh_sach, dict):
+            raise TypeError("danh_sach phải là dict {mã: thực thể}")
+        for ma, thuc_the in danh_sach.items():
             if not isinstance(thuc_the, self.LOAI):
                 raise TypeError(f"{type(self).__name__} chỉ ghi được {self.LOAI.__name__}, nhận {type(thuc_the).__name__}")
-
-        # Ghi thêm: đọc dữ liệu cũ (đã kiểm tra hợp lệ) rồi nối vào; ghi đè: chỉ dùng dữ liệu mới
-        tong = moi if ghi_de else self._doc_file(self._duong_dan_chinh) + moi
-
-        ma_da_thay: set[str] = set()
-        for thuc_the in tong:
-            if thuc_the.ma in ma_da_thay:
-                raise ValueError(f"Mã bị trùng khi ghi {self.TEN_FILE}: {thuc_the.ma}")
-            ma_da_thay.add(thuc_the.ma)
+            if ma != thuc_the.ma:
+                raise ValueError(f"Khóa {ma!r} không khớp với mã thực thể {thuc_the.ma!r}")
 
         # Đổi sang dict TRƯỚC khi đụng vào file: nếu lỗi ở bước này thì file cũ không bị ảnh hưởng
         # ensure_ascii=False giữ nguyên tiếng Việt, indent=2 để dễ đọc khi mở file
-        noi_dung = json.dumps([self._sang_dict(tt) for tt in tong], ensure_ascii=False, indent=2)
+        noi_dung = json.dumps([self._sang_dict(tt) for tt in danh_sach.values()], ensure_ascii=False, indent=2)
 
-        self._ghi_nguyen_tu(self._duong_dan_chinh, noi_dung)
-        self._ghi_nguyen_tu(self._duong_dan_sao_luu, noi_dung)
+        ghi_nguyen_tu(self._duong_dan_chinh, noi_dung)
+        ghi_nguyen_tu(self._duong_dan_sao_luu, noi_dung)
         # Lưu dấu thời gian sửa đổi của file chính NGAY SAU khi ghi (đọc từ chính file vừa ghi để so sánh sau này)
         dau_thoi_gian = os.stat(self._duong_dan_chinh).st_mtime_ns
-        self._ghi_nguyen_tu(self._duong_dan_dau_thoi_gian, str(dau_thoi_gian))
+        ghi_nguyen_tu(self._duong_dan_dau_thoi_gian, str(dau_thoi_gian))
 
         # Vừa ghi xong nghĩa là app đã nắm dữ liệu mới nhất, không cần kiểm tra khởi động nữa
         self._da_kiem_tra_khoi_dong = True
@@ -207,5 +199,5 @@ class LuuTruJson(GiaoThucLuuTru[T]):
         except (OSError, ValueError):
             return True  # file dấu thời gian hỏng -> không còn tin cậy được, coi như có vấn đề
         if not os.path.exists(self._duong_dan_chinh):
-            return True  # từng ghi nhưng file chính biến mất -> bị xóa ngoài app
+            return True  # từng ghi mà file chính biến mất -> bị xóa ngoài app
         return os.stat(self._duong_dan_chinh).st_mtime_ns != da_luu

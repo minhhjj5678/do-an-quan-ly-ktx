@@ -3,7 +3,7 @@
 from datetime import date
 from typing import Any
 
-from luu_tru.luu_tru_json import LuuTruJson, khoi_phuc_trang_thai
+from luu_tru.luu_tru_json import LuuTruJson
 from thuc_the.tai_chinh import HopDong, TrangThaiHopDong
 from tien_ich.cau_hinh_tinh import FILE_HOP_DONG
 
@@ -24,17 +24,17 @@ class LuuTruHopDong(LuuTruJson[HopDong]):
             "ma_sinh_vien": hd.ma_sinh_vien,
             "ma_phong": hd.ma_phong,
             "hoc_ky": hd.hoc_ky,
-            "dich_vu_them": hd.dich_vu_them,  # {mã dịch vụ: số lượng/giá}, property trả về bản copy
+            "dich_vu_them": hd.dich_vu_them,  # {mã dịch vụ: giá trị}, property trả về bản copy
             "phi_tien_nghi": hd.phi_tien_nghi,
             # Lưu TÊN của enum (CHUA_THANH_TOAN...) thay vì chữ hiển thị, để đổi chữ hiển thị không làm hỏng file cũ
             "trang_thai": hd.trang_thai.name,
         }
 
     def _tu_dict(self, d: dict[str, Any]) -> HopDong:
-        hd = HopDong(d["ma"], d["he_so_thang"],
-                     date.fromisoformat(d["ngay_bat_dau"]), date.fromisoformat(d["ngay_ket_thuc"]),
-                     d["gia_co_ban"], d["tien_dat_coc"], d["ma_sinh_vien"], d["ma_phong"], d["hoc_ky"],
-                     d["dich_vu_them"], d["phi_tien_nghi"])
-        # Hàm khởi tạo luôn đặt "chưa thanh toán"; trả về đúng trạng thái đã lưu trong file
-        khoi_phuc_trang_thai(hd, HopDong, TrangThaiHopDong[d["trang_thai"]])
-        return hd
+        return HopDong(
+            ma=d["ma"], he_so_thang=d["he_so_thang"],
+            ngay_bat_dau=date.fromisoformat(d["ngay_bat_dau"]), ngay_ket_thuc=date.fromisoformat(d["ngay_ket_thuc"]),
+            gia_co_ban=d["gia_co_ban"], tien_dat_coc=d["tien_dat_coc"],
+            ma_sinh_vien=d["ma_sinh_vien"], ma_phong=d["ma_phong"], hoc_ky=d["hoc_ky"],
+            dich_vu_them=d["dich_vu_them"], phi_tien_nghi=d["phi_tien_nghi"],
+            trang_thai=TrangThaiHopDong[d["trang_thai"]])  # trạng thái truyền thẳng vào hàm khởi tạo

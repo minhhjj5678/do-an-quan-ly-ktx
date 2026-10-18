@@ -3,7 +3,7 @@
 from datetime import date
 from typing import Any
 
-from luu_tru.luu_tru_json import LuuTruJson, khoi_phuc_trang_thai
+from luu_tru.luu_tru_json import LuuTruJson
 from thuc_the.tai_chinh import HoaDonThang, TrangThaiHoaDon
 from tien_ich.cau_hinh_tinh import FILE_HOA_DON_THANG
 
@@ -28,8 +28,8 @@ class LuuTruHoaDonThang(LuuTruJson[HoaDonThang]):
         }
 
     def _tu_dict(self, d: dict[str, Any]) -> HoaDonThang:
-        hd = HoaDonThang(d["ma"], d["thang"], d["dien_cu"], d["dien_moi"], d["don_gia_dien"],
-                         d["nuoc_cu"], d["nuoc_moi"], d["don_gia_nuoc"], d["phong"],
-                         date.fromisoformat(d["han_chot"]))
-        khoi_phuc_trang_thai(hd, HoaDonThang, TrangThaiHoaDon[d["trang_thai"]])
-        return hd
+        return HoaDonThang(
+            ma=d["ma"], thang=d["thang"], dien_cu=d["dien_cu"], dien_moi=d["dien_moi"], don_gia_dien=d["don_gia_dien"],
+            nuoc_cu=d["nuoc_cu"], nuoc_moi=d["nuoc_moi"], don_gia_nuoc=d["don_gia_nuoc"], phong=d["phong"],
+            han_chot=date.fromisoformat(d["han_chot"]),
+            trang_thai=TrangThaiHoaDon[d["trang_thai"]])  # trạng thái truyền thẳng vào hàm khởi tạo
