@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
 
+from thuc_the._kiem_tra_ma import ktra_ma_tham_chieu_hop_le
+from tien_ich.regex import ktra_chuoi
+
 
 class ThucTheGoc(ABC):
     """
@@ -11,9 +14,9 @@ class ThucTheGoc(ABC):
     Phương thức:
         - __eq__: so sánh hai thực thể có cùng mã hay không.
     """
-    # TODO: kiểm tra tính hợp lệ trước khi gán mã
     @abstractmethod
     def __init__(self, ma: str):
+        ktra_ma_tham_chieu_hop_le(ma, "Mã thực thể")
         self.__ma = ma
 
     def __eq__(self, other: object) -> bool:
@@ -73,8 +76,8 @@ class ThucTheCoTen(ThucTheGoc):
     def ten(self):
         return self.__ten
 
-    # TODO: setter ném lỗi nếu giá trị không hợp lệ
     @ten.setter
     def ten(self, value):
+        ktra_chuoi(value, lambda x: x.strip() != "", "Tên thực thể không được rỗng")
         self.__ten = value
 

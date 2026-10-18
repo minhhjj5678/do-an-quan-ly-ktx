@@ -1,13 +1,23 @@
+from datetime import date
+
+from thuc_the._kiem_tra_ma import ktra_ma_tham_chieu_hop_le
 from thuc_the.tai_chinh import TienIchPhong
 from thuc_the.thuc_the_goc import ThucTheCoTen, ThucTheLuuTruDuoc
+from tien_ich.regex import ktra_chuoi, ktra_so, la_cccd, la_ma_phong, la_ma_sinh_vien, la_ma_toa_nha, la_sdt, la_so_duong
 
 
 class SinhVien(ThucTheCoTen, ThucTheLuuTruDuoc):
     def __init__(self, ma: str, ten: str, sdt: str, nam_sinh: int, cccd: str, dia_chi_chi_tiet: str, xa: str, tinh: str):
+        ktra_chuoi(ma, lambda x: la_ma_sinh_vien(x), "Mã sinh viên không hợp lệ")
         ThucTheCoTen.__init__(self, ma, ten)
         ThucTheLuuTruDuoc.__init__(self)
+
+        ktra_so(nam_sinh, lambda x: x > date.today().year - 100, "Năm sinh không hợp lệ")
         self.__nam_sinh = nam_sinh
+
+        ktra_chuoi(cccd, lambda x: la_cccd(x), "CCCD không hợp lệ")
         self.__cccd = cccd
+
         self.sdt = sdt
         self.dia_chi_chi_tiet = dia_chi_chi_tiet
         self.xa = xa
@@ -47,43 +57,60 @@ class SinhVien(ThucTheCoTen, ThucTheLuuTruDuoc):
     def tinh(self) -> str | None:
         return self.__tinh
 
-    ## TODO: các setter ném lỗi nếu giá trị không hợp lệ
     @sdt.setter
     def sdt(self, value: str):
+        ktra_chuoi(value, lambda x: la_sdt(x), "Số điện thoại không hợp lệ")
         self.__sdt = value
 
     @phong_hien_tai.setter
     def phong_hien_tai(self, value: str | None):
+        if value is not None:
+            ktra_ma_tham_chieu_hop_le(value, "Mã phòng")
         self.__phong_hien_tai = value
 
     @hop_dong.setter
     def hop_dong(self, value: str | None):
+        if value is not None:
+            ktra_ma_tham_chieu_hop_le(value, "Mã hợp đồng")
         self.__hop_dong = value
 
     @dia_chi_chi_tiet.setter
     def dia_chi_chi_tiet(self, value: str):
+        ktra_chuoi(value, lambda x: x.strip() != "", "Địa chỉ chi tiết không được rỗng")
         self.__dia_chi_chi_tiet = value
 
     @xa.setter
     def xa(self, value: str):
+        ktra_ma_tham_chieu_hop_le(value, "Mã xã")
         self.__xa = value
 
     @tinh.setter
     def tinh(self, value: str):
+        ktra_ma_tham_chieu_hop_le(value, "Mã tỉnh")
         self.__tinh = value
 
 
 class Phong(ThucTheCoTen, ThucTheLuuTruDuoc):
     def __init__(self, ma: str, ten: str, suc_chua: int, gia_phong: float, toa_nha: str, tang: int, tien_ich_phong: set[str] | None = None):
+        ktra_chuoi(ma, lambda x: la_ma_phong(x), "Mã phòng không hợp lệ")
         ThucTheCoTen.__init__(self, ma, ten)
         ThucTheLuuTruDuoc.__init__(self)
-        self.gia_phong = gia_phong
+
+        ktra_ma_tham_chieu_hop_le(toa_nha, "Mã tòa nhà")
         self.__toa_nha = toa_nha
+
+        ktra_so(tang, lambda x: la_so_duong(x), "Tầng phải là số dương")
         self.__tang = tang
+
         if tien_ich_phong is None:
             tien_ich_phong = set()
+        else:
+            for tien_ich in tien_ich_phong:
+                ktra_ma_tham_chieu_hop_le(tien_ich, 'Mã tiện ích: "' + tien_ich + '"')
         self.__tien_ich_phong = set(tien_ich_phong)
+
         self.__danh_sach_sinh_vien = set()
+        self.gia_phong = gia_phong
         self.suc_chua = suc_chua
 
     @property
@@ -114,13 +141,15 @@ class Phong(ThucTheCoTen, ThucTheLuuTruDuoc):
     def danh_sach_sinh_vien(self) -> set[str]:
         return self.__danh_sach_sinh_vien.copy()
 
-    ## TODO: các setter ném lỗi nếu giá trị không hợp lệ
     @suc_chua.setter
     def suc_chua(self, value: int):
+        ktra_so(value, lambda x: la_so_duong(x), "Sức chứa phải là số dương")
+        ktra_so(value, lambda x: x >= len(self.danh_sach_sinh_vien), "Sức chứa không được nhỏ hơn số lượng sinh viên trong phòng")
         self.__suc_chua = value
 
     @gia_phong.setter
     def gia_phong(self, value: float):
+        ktra_so(value, lambda x: la_so_duong(x), "Giá phòng phải là số dương")
         self.__gia_phong = value
 
     # TODO: cần triển khai
@@ -157,8 +186,10 @@ class Phong(ThucTheCoTen, ThucTheLuuTruDuoc):
 
 class ToaNha(ThucTheCoTen, ThucTheLuuTruDuoc):
     def __init__(self, ma: str, ten: str, so_tang: int):
+        ktra_chuoi(ma, lambda x: la_ma_toa_nha(x), "Mã tòa nhà không hợp lệ")
         ThucTheCoTen.__init__(self, ma, ten)
         ThucTheLuuTruDuoc.__init__(self)
+
         self.so_tang = so_tang
         self.__danh_sach_phong = set()
 
@@ -174,9 +205,9 @@ class ToaNha(ThucTheCoTen, ThucTheLuuTruDuoc):
     def so_phong(self) -> int:
         return len(self.__danh_sach_phong)
 
-    ## TODO: các setter ném lỗi nếu giá trị không hợp lệ
     @so_tang.setter
     def so_tang(self, value: int):
+        ktra_so(value, lambda x: la_so_duong(x), "Số tầng phải là số dương")
         self.__so_tang = value
 
     def them_phong(self, phong: Phong) -> None:
