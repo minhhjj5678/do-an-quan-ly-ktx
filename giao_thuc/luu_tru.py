@@ -15,9 +15,23 @@ class GiaoThucLuuTru(ABC, Generic[T]):
     @abstractmethod
     def doc(self) -> dict[str, T]:
         """
-        Đọc dữ liệu từ file dữ liệu và trả về dict với key là mã thực thể, nếu không tồn tại/file bị hỏng/mất đồng bộ thì đọc từ file sao lưu, nếu file sao lưu cũng vậy thì trả về dict rỗng.\n
-        Đối với api ngoài, khi file dữ liệu và file sao lưu cục bộ hỏng thì đọc dữ liệu trực tiếp từ api.\n
-        Ném ValueError nếu file dữ liệu bị hỏng hoặc mất đồng bộ.
+        Đọc dữ liệu từ file dữ liệu và trả về dict với key là mã thực thể.\n
+        Ném:
+            * ValueError nếu file bị hỏng/mất đồng bộ.
+            * FileNotFoundError nếu file dữ liệu không tồn tại.
+        """
+        raise NotImplementedError
+    
+    @abstractmethod
+    def doc_sao_luu(self) -> dict[str, T]:
+        """
+        Đọc dữ liệu từ file sao lưu.
+        Chỉ dùng khi file dữ liệu chính không khả dụng.\n
+        Đối với api ngoài, khi file dữ liệu và file sao lưu cục bộ hỏng thì đọc dữ liệu trực tiếp từ api. Việc đọc api nên có timeout\n
+        Ném:
+            * ValueError nếu file bị hỏng.
+            * FileNotFoundError nếu file dữ liệu không tồn tại.
+            * OSError nếu mất mạng/api trả lỗi/timeout.
         """
         raise NotImplementedError
 

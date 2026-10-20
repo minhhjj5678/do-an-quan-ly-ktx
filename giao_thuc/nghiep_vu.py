@@ -15,6 +15,25 @@ P = ParamSpec("P")
 
 # Phần B
 class GiaoThucDieuPhoi(ABC):
+    @abstractmethod
+    def nap_du_lieu_file(self) -> None:
+        """
+        Nạp toàn bộ dữ liệu cục bộ vào ram và kiểm chéo. Bắt buộc gọi đúng một lần trước khi sử dụng giao thức.\n
+        Ném lỗi nếu dữ liệu hỏng/lệch nhau.
+        Không nạp dữ liệu từ api ngoài, chỉ nạp dữ liệu cục bộ.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def nap_du_lieu_api(self) -> None:
+        """
+        Nạp dữ liệu địa lý cục bộ trước, nếu không thành công thì nạp dữ liệu từ api ngoài vào ram.\n
+        Bắt buộc phải được gọi trong luồng phụ, chặn màn hình hoặc tải ngầm khi khởi động app.
+        Có thể gọi nhiều lần đến khi dữ liệu tải thành công.
+        Ném OSError nếu tải dữ liệu không thành công.
+        """
+        raise NotImplementedError
+
     # CRUD
     @abstractmethod
     def lay_tat_ca(self, loai_thuc_the: type[T], lay_luu_tru: bool = False) -> dict[str, T]:
@@ -74,7 +93,7 @@ class GiaoThucDieuPhoi(ABC):
     def tai_kich_hoat(self, thuc_the: ThucTheLuuTruDuoc) -> None:
         """
         Thay đổi trạng thái thực thể thành hoạt động.\n
-        Ném lỗi nếu thực thể đã được lưu trữ.
+        Ném lỗi nếu thực thể đang hoạt động.
         """
         raise NotImplementedError
 
@@ -168,6 +187,7 @@ class GiaoThucDieuPhoi(ABC):
         """
         Dùng cho việc nhập địa chỉ thường trú của sinh viên.\n
         - Trả về: danh sách các tỉnh Việt Nam.
+        - Ném lỗi nếu dữ liệu địa lý chưa được nạp.
         """
         raise NotImplementedError
 
