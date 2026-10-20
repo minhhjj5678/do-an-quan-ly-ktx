@@ -2,7 +2,9 @@ from abc import ABC, abstractmethod
 from datetime import date
 from enum import Enum
 
+from thuc_the._kiem_tra_ma import ktra_ma_tham_chieu_hop_le
 from thuc_the.thuc_the_goc import ThucTheCoTen, ThucTheGoc, ThucTheLuuTruDuoc
+from tien_ich.regex import ktra_chuoi, ktra_ngay, ktra_so, la_ma_dich_vu_them, la_ma_hoa_don_thang, la_ma_hop_dong, la_so_duong
 
 
 class TrangThaiHoaDon(Enum):
@@ -15,11 +17,13 @@ class TrangThaiHopDong(Enum):
     KET_THUC_HOP_DONG = "kết thúc hợp đồng"
 
 class DichVuCoSo(ThucTheCoTen, ThucTheLuuTruDuoc, ABC):
-    # TODO: kiểm tra tính hợp lệ trước khi gán biến
     @abstractmethod
     def __init__(self, ma: str, ten: str, don_gia: float):
+        ktra_chuoi(ma, lambda x: la_ma_dich_vu_them(x), "Mã dịch vụ không hợp lệ")
         ThucTheCoTen.__init__(self, ma, ten)
         ThucTheLuuTruDuoc.__init__(self)
+
+        ktra_so(don_gia, lambda x: la_so_duong(x), "Đơn giá phải là số dương")
         self.__don_gia = don_gia
 
     @property
@@ -41,19 +45,37 @@ class TienIchPhong(DichVuCoSo):
         super().__init__(ma, ten, don_gia)
 
 class HopDong(ThucTheGoc):
-    # TODO: kiểm tra tính hợp lệ trước khi gán các biến
     def __init__(self, ma: str, he_so_thang: int, ngay_bat_dau: date, ngay_ket_thuc: date, gia_co_ban: float, tien_dat_coc: float, ma_sinh_vien: str, ma_phong: str, hoc_ky: str, dich_vu_them: dict[str, float] | None = None, phi_tien_nghi: float = 0, trang_thai: TrangThaiHopDong = TrangThaiHopDong.CHUA_THANH_TOAN):
+        ktra_chuoi(ma, lambda x: la_ma_hop_dong(x), "Mã hợp đồng không hợp lệ")
         super().__init__(ma)
+
+        ktra_ngay(ngay_ket_thuc, lambda x: True, "Ngày kết thúc rỗng hoặc không hợp lệ")
+        ktra_ngay(ngay_bat_dau, lambda x: x < ngay_ket_thuc, "Ngày bắt đầu phải trước ngày kết thúc")
         self.__ngay_bat_dau = ngay_bat_dau
-        self.__he_so_thang = he_so_thang
         self.__ngay_ket_thuc = ngay_ket_thuc
+
+        ktra_so(he_so_thang, lambda x: la_so_duong(x), "Hệ số tháng phải là số dương")
+        ktra_so(gia_co_ban, lambda x: la_so_duong(x), "Giá cơ bản phải là số dương")
+        ktra_so(tien_dat_coc, lambda x: la_so_duong(x), "Tiền đặt cọc phải là số dương")
+        ktra_so(phi_tien_nghi, lambda x: x >= 0, "Phí tiện nghi không được âm")
+        self.__he_so_thang = he_so_thang
         self.__gia_co_ban = gia_co_ban
         self.__tien_dat_coc = tien_dat_coc
+        self.__phi_tien_nghi = phi_tien_nghi
+
+        if dich_vu_them is None:
+            dich_vu_them = {}
+        else:
+            for ma_dich_vu, don_gia in dich_vu_them.items():
+                ktra_ma_tham_chieu_hop_le(ma_dich_vu, "Mã dịch vụ thêm")
+                ktra_so(don_gia, lambda x: la_so_duong(x), f"Đơn giá dịch vụ phải là số dương: {ma_dich_vu}")
+        self.__dich_vu_them = dict(dich_vu_them)
+
+        ktra_ma_tham_chieu_hop_le(ma_sinh_vien, "Mã sinh viên")
+        ktra_ma_tham_chieu_hop_le(ma_phong, "Mã phòng")
+        ktra_ma_tham_chieu_hop_le(hoc_ky, "Mã học kỳ")
         self.__ma_sinh_vien = ma_sinh_vien
         self.__ma_phong = ma_phong
-        self.__dich_vu_them = ( dict(dich_vu_them) if dich_vu_them is not None else {} )
-        self.__phi_tien_nghi = phi_tien_nghi
-        self.__trang_thai = TrangThaiHopDong.CHUA_THANH_TOAN
         self.__hoc_ky = hoc_ky
 
         self.__trang_thai = trang_thai
@@ -116,9 +138,17 @@ class HopDong(ThucTheGoc):
     def tong_tien(self) -> float: return 1
 
 class HoaDonThang(ThucTheGoc):
-    # TODO: kiểm tra tính hợp lệ trước khi gán các biến
     def __init__(self, ma: str, thang: int, dien_cu: int, dien_moi: int, don_gia_dien: float, nuoc_cu: int, nuoc_moi: int, don_gia_nuoc: float, phong: str, han_chot: date, trang_thai: TrangThaiHoaDon = TrangThaiHoaDon.CHUA_THANH_TOAN):
+        ktra_chuoi(ma, lambda x: la_ma_hoa_don_thang(x), "Mã hóa đơn tháng không hợp lệ")
         super().__init__(ma)
+
+        ktra_so(thang, lambda x: x > 0 and x <= 12, "Tháng phải là số dương từ 1 đến 12")
+        ktra_so(dien_cu, lambda x: x >= 0 and x <= dien_moi, "Chỉ số điện cũ phải là số không âm và không lớn hơn chỉ số điện mới")
+        ktra_so(nuoc_cu, lambda x: x >= 0 and x <= nuoc_moi, "Chỉ số nước cũ phải là số không âm và không lớn hơn chỉ số nước mới")
+        ktra_so(dien_moi, lambda x: x >= 0, "Chỉ số điện mới phải là số không âm")
+        ktra_so(nuoc_moi, lambda x: x >= 0, "Chỉ số nước mới phải là số không âm")
+        ktra_so(don_gia_dien, lambda x: x >= 0, "Đơn giá điện phải là số không âm")
+        ktra_so(don_gia_nuoc, lambda x: x >= 0, "Đơn giá nước phải là số không âm")
         self.__thang = thang
         self.__dien_cu = dien_cu
         self.__dien_moi = dien_moi
@@ -126,8 +156,13 @@ class HoaDonThang(ThucTheGoc):
         self.__nuoc_cu = nuoc_cu
         self.__nuoc_moi = nuoc_moi
         self.__don_gia_nuoc = don_gia_nuoc
+
+        ktra_ma_tham_chieu_hop_le(phong, "Mã phòng")
         self.__phong = phong
+
+        ktra_ngay(han_chot, lambda x: True, "Hạn chốt rỗng hoặc không hợp lệ")
         self.__han_chot = han_chot
+
         self.__trang_thai = trang_thai
 
     @property
