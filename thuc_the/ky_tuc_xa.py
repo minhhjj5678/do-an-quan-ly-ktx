@@ -210,7 +210,7 @@ class ToaNha(ThucTheCoTen, ThucTheLuuTruDuoc):
         ktra_so(value, lambda x: la_so_duong(x), "Số tầng phải là số dương")
         self.__so_tang = value
 
-    def them_phong(self, phong: Phong) -> None:
+    def them_phong(self, phong: Phong | str) -> None:
         """
         Thêm đối tượng phòng vào tòa nhà.
         Ném lỗi hợp lệ khi cần
