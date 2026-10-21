@@ -5,9 +5,10 @@
 # chỉ còn hai cấp Tỉnh -> Xã/Phường, khớp với dropdown tỉnh -> xã của màn hình sinh viên).
 #
 # Chiến lược (theo đúng thiết kế trong giao_thuc/luu_tru.py):
-#   1. doc(): ưu tiên đọc file cục bộ du_lieu/dia_ly.json (nhanh, chạy được khi mất mạng); chưa có file thì tải từ API
-#   2. File chính hỏng -> doc() ném ValueError, tầng điều phối gọi doc_sao_luu() để đọc file sao lưu
-#   3. doc_sao_luu(): sao lưu cũng hỏng/chưa có -> đọc trực tiếp từ API, và lưu lại xuống file cho lần sau
+#   1. doc(): chỉ đọc file cục bộ du_lieu/dia_ly.json (nhanh, không đụng tới mạng), y như các lớp lưu trữ khác
+#   2. File chính không dùng được -> tầng điều phối gọi doc_sao_luu(): đọc file sao lưu
+#   3. Sao lưu cũng hỏng/chưa có -> doc_sao_luu() đọc trực tiếp từ API (có timeout), lưu lại xuống file cho lần sau.
+#      Việc gọi mạng có thể mất vài giây nên tầng điều phối phải chạy nó trong luồng phụ (nap_du_lieu_api).
 import json
 import urllib.request
 from typing import Any
@@ -25,12 +26,6 @@ THOI_GIAN_CHO_GIAY = 20
 class LuuTruDiaLy(LuuTruJson[Tinh]):
     TEN_FILE = FILE_DIA_LY
     LOAI = Tinh
-
-    def __init__(self) -> None:
-        super().__init__()
-        # Đã thử gọi API mà lỗi (mất mạng...) thì không thử lại trong lần chạy này, tránh mỗi lần mở form
-        # lại treo giao diện đến hết thời gian chờ. Mở lại ứng dụng khi có mạng thì sẽ thử lại.
-        self._da_loi_api = False
 
     # ---- Đổi Tinh <-> dict để lưu JSON ----
     def _sang_dict(self, tinh: Tinh) -> dict[str, Any]:
@@ -75,44 +70,36 @@ class LuuTruDiaLy(LuuTruJson[Tinh]):
         return ket_qua
 
     def tai_tu_api(self) -> dict[str, Tinh]:
-        """Tải danh sách tỉnh/xã từ API (không lưu). Ném ValueError nếu mất mạng, quá thời gian hoặc dữ liệu sai."""
+        """
+        Tải danh sách tỉnh/xã từ API (không lưu).
+        Ném OSError nếu mất mạng, API trả lỗi, quá thời gian chờ, hoặc API trả dữ liệu sai định dạng.
+        """
         try:
             du_lieu = self._goi_api()
-        except (OSError, ValueError) as loi:  # lỗi mạng/HTTP/timeout là OSError, JSON hỏng là ValueError
-            raise ValueError(f"Không tải được dữ liệu địa lý từ API: {loi}") from loi
-        return self._phan_tich_api(du_lieu)
+            return self._phan_tich_api(du_lieu)
+        except (OSError, ValueError) as loi:  # lỗi mạng/HTTP/timeout là OSError; JSON hỏng hoặc sai cấu trúc là ValueError
+            raise OSError(f"Không tải được dữ liệu địa lý từ API: {loi}") from loi
 
     def _tai_va_luu(self) -> dict[str, Tinh]:
         """Tải từ API rồi ghi xuống file chính + sao lưu để lần sau không cần mạng."""
         danh_sach = self.tai_tu_api()
-        self.ghi(danh_sach)
+        try:
+            self.ghi(danh_sach)
+        except OSError:
+            pass  # không lưu được (ví dụ ổ đĩa chỉ đọc) thì vẫn dùng dữ liệu vừa tải
         return danh_sach
 
     # ---- Ghi đè hành vi đọc ----
-    def doc(self) -> dict[str, Tinh]:
-        """
-        Đọc địa lý từ file cục bộ (file hỏng thì ném ValueError như lớp cha).
-        Chưa có dữ liệu cục bộ (lần chạy đầu) thì tự tải từ API một lần rồi lưu lại. Nếu lúc đó mất mạng
-        thì trả về dict rỗng.
-        """
-        danh_sach = super().doc()
-        if danh_sach or self._da_loi_api:
-            return danh_sach
-        try:
-            return self._tai_va_luu()
-        except ValueError:
-            self._da_loi_api = True
-            return {}
-
+    # doc() dùng nguyên của lớp cha (chỉ đọc file cục bộ, ném FileNotFoundError/ValueError như giao thức)
     def doc_sao_luu(self) -> dict[str, Tinh]:
         """
-        Đọc từ file sao lưu; nếu sao lưu cũng hỏng hoặc chưa có thì đọc trực tiếp từ API
-        (và lưu lại, khôi phục luôn cả file chính). Ném ValueError nếu API cũng không dùng được.
+        Đọc từ file sao lưu; nếu sao lưu cũng hỏng hoặc chưa có thì đọc trực tiếp từ API (và lưu lại,
+        khôi phục luôn cả file chính). Ném OSError nếu API cũng không dùng được.
         """
         try:
             danh_sach = super().doc_sao_luu()
             if danh_sach:
                 return danh_sach
-        except ValueError:
-            pass  # file sao lưu hỏng -> chuyển sang API
+        except (ValueError, FileNotFoundError):
+            pass  # sao lưu hỏng hoặc chưa có -> chuyển sang API
         return self._tai_va_luu()

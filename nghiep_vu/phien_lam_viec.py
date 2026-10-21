@@ -41,15 +41,24 @@ class PhienLamViec(GiaoThucPhienLamViec):
     # ---- Hàm hỗ trợ nội bộ ----
     def _doc_luc_khoi_dong(self) -> dict[str, TaiKhoan]:
         """
-        Đọc danh sách tài khoản. Nếu file chính hỏng hoặc bị sửa ngoài app (ValueError) thì đọc từ file sao lưu
-        rồi ghi ngược lại để khôi phục file chính. Sao lưu cũng hỏng thì ValueError nổi lên để giao diện báo lỗi.
-        (Danh sách tài khoản do lớp này tự quản lý nên tự xử lý luôn, không nhờ tầng điều phối.)
+        Đọc danh sách tài khoản lúc khởi động.
+          - File chính đọc được: dùng luôn.
+          - File chính chưa có (lần chạy đầu) mà cũng không có sao lưu: danh sách rỗng (sẽ tạo quản trị viên đầu tiên).
+          - File chính hỏng / bị sửa ngoài app / bị xóa: đọc từ file sao lưu rồi ghi ngược lại để khôi phục file chính.
+          - File chính hỏng mà không có sao lưu, hoặc sao lưu cũng hỏng: ném ValueError để giao diện báo lỗi,
+            tuyệt đối không khởi động với danh sách rỗng vì sẽ mất hết tài khoản.
+        Danh sách tài khoản do lớp này tự quản lý nên tự xử lý luôn, không nhờ tầng điều phối.
         """
         try:
             return dict(self._luu_tru.doc())
-        except ValueError:
-            du_lieu = dict(self._luu_tru.doc_sao_luu())
-            self._luu_tru.ghi(du_lieu)
+        except (FileNotFoundError, ValueError) as loi_chinh:
+            try:
+                du_lieu = dict(self._luu_tru.doc_sao_luu())
+            except FileNotFoundError:
+                if isinstance(loi_chinh, FileNotFoundError):
+                    return {}  # chưa có file nào: lần chạy đầu tiên
+                raise loi_chinh  # file chính hỏng mà không có sao lưu để khôi phục
+            self._luu_tru.ghi(du_lieu)  # khôi phục file chính từ bản sao lưu
             return du_lieu
 
     def _luu(self, tai_khoan_moi: dict[str, TaiKhoan]) -> None:

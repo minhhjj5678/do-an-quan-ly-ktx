@@ -85,11 +85,11 @@ class LuuTruJson(GiaoThucLuuTru[T]):
     def _doc_file(self, duong_dan: str) -> dict[str, T]:
         """
         Đọc một file JSON và dựng lại dict {mã: thực thể}.
-        - File không tồn tại: trả về dict rỗng.
+        - File không tồn tại: ném FileNotFoundError.
         - File hỏng (không đọc được, sai cấu trúc, thiếu trường, trùng mã): ném ValueError.
         """
         if not os.path.exists(duong_dan):
-            return {}
+            raise FileNotFoundError(f"Không tìm thấy file {os.path.basename(duong_dan)}")
 
         try:
             with open(duong_dan, "r", encoding="utf-8") as f:
@@ -114,11 +114,13 @@ class LuuTruJson(GiaoThucLuuTru[T]):
     def doc(self) -> dict[str, T]:
         """
         Đọc dữ liệu từ file chính, trả về dict với khóa là mã thực thể.
-          - File chưa tồn tại: trả về dict rỗng.
+          - File chưa tồn tại: ném FileNotFoundError.
           - File hỏng, hoặc (ở lần đọc đầu tiên) bị sửa ngoài ứng dụng: ném ValueError.
-        Tầng điều phối bắt ValueError này rồi gọi doc_sao_luu() để lấy dữ liệu từ bản sao lưu,
+        Tầng điều phối bắt hai lỗi này rồi gọi doc_sao_luu() để lấy dữ liệu từ bản sao lưu,
         sau đó ghi() lại để khôi phục file chính. Tầng lưu trữ KHÔNG tự làm việc đó.
         """
+        if not os.path.exists(self._duong_dan_chinh):
+            raise FileNotFoundError(f"Không tìm thấy file {self.TEN_FILE}")  # kiểm tra trước để lỗi đúng loại
         if not self._da_kiem_tra_khoi_dong:
             if self.co_bi_chinh_sua():
                 raise ValueError(f"File {self.TEN_FILE} đã bị chỉnh sửa ngoài ứng dụng hoặc bị mất đồng bộ")
@@ -129,8 +131,8 @@ class LuuTruJson(GiaoThucLuuTru[T]):
     def doc_sao_luu(self) -> dict[str, T]:
         """
         Đọc dữ liệu từ file sao lưu (thư mục .sao_luu), trả về dict với khóa là mã thực thể.
-        Chưa có file sao lưu: trả về dict rỗng. File sao lưu cũng hỏng: ném ValueError.
-        Chỉ dùng khi doc() ném ValueError.
+        Chưa có file sao lưu: ném FileNotFoundError. File sao lưu hỏng: ném ValueError.
+        Chỉ dùng khi file chính không khả dụng (doc() ném lỗi).
         """
         return self._doc_file(self._duong_dan_sao_luu)
 

@@ -539,7 +539,7 @@ def _doc_dia_ly_cuc_bo() -> list[Tinh] | None:
         return None
     try:
         return list(LuuTruDiaLy().doc().values()) or None
-    except ValueError:
+    except (ValueError, FileNotFoundError):
         return None
 
 
