@@ -34,11 +34,24 @@ def _ma_bam_gia() -> str:
 class PhienLamViec(GiaoThucPhienLamViec):
     def __init__(self, luu_tru_tai_khoan: GiaoThucLuuTru[TaiKhoan]) -> None:
         self._luu_tru = luu_tru_tai_khoan
-        # Đọc file đúng MỘT lần ở đây; dict {tên đăng nhập: TaiKhoan}. Lớp lưu trữ đã tự xử lý file hỏng/bị sửa.
-        self._tai_khoan: dict[str, TaiKhoan] = dict(self._luu_tru.doc())
+        # Đọc file đúng MỘT lần ở đây; dict {tên đăng nhập: TaiKhoan}
+        self._tai_khoan: dict[str, TaiKhoan] = self._doc_luc_khoi_dong()
         self._tai_khoan_hien_tai: TaiKhoan | None = None  # None = chưa ai đăng nhập
 
     # ---- Hàm hỗ trợ nội bộ ----
+    def _doc_luc_khoi_dong(self) -> dict[str, TaiKhoan]:
+        """
+        Đọc danh sách tài khoản. Nếu file chính hỏng hoặc bị sửa ngoài app (ValueError) thì đọc từ file sao lưu
+        rồi ghi ngược lại để khôi phục file chính. Sao lưu cũng hỏng thì ValueError nổi lên để giao diện báo lỗi.
+        (Danh sách tài khoản do lớp này tự quản lý nên tự xử lý luôn, không nhờ tầng điều phối.)
+        """
+        try:
+            return dict(self._luu_tru.doc())
+        except ValueError:
+            du_lieu = dict(self._luu_tru.doc_sao_luu())
+            self._luu_tru.ghi(du_lieu)
+            return du_lieu
+
     def _luu(self, tai_khoan_moi: dict[str, TaiKhoan]) -> None:
         """
         Ghi bản danh sách mới xuống file, GHI THÀNH CÔNG rồi mới thay bản trong bộ nhớ.

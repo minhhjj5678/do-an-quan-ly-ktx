@@ -374,7 +374,7 @@ def sinh_du_lieu(so_sinh_vien: int = 80, seed: int | None = None, hom_nay: date 
         toa = ToaNha(ma=ma, ten=ten, so_tang=so_tang)
         for phong in cac_phong:
             if phong.toa_nha == ma:
-                toa.them_phong(phong)
+                toa.them_phong(phong.ma)
         if toa.danh_sach_phong != {p.ma for p in cac_phong if p.toa_nha == ma}:
             raise RuntimeError("ToaNha.them_phong() chưa thêm được phòng vào tòa nhà (có thể phần B chưa triển khai hàm này)")
         cac_toa_nha.append(toa)
@@ -523,9 +523,7 @@ def ghi_du_lieu(dl: DuLieuMau) -> None:
         """Giao thức lưu trữ nhận dict {mã: thực thể}."""
         return {tt.ma: tt for tt in danh_sach}
 
-    luu_tru_phong = LuuTruPhong()
-    for luu_tru, danh_sach in [(LuuTruSinhVien(), dl.sinh_vien), (luu_tru_phong, dl.phong),
-                               (LuuTruToaNha(luu_tru_phong), dl.toa_nha),
+    for luu_tru, danh_sach in [(LuuTruSinhVien(), dl.sinh_vien), (LuuTruPhong(), dl.phong), (LuuTruToaNha(), dl.toa_nha),
                                (LuuTruHopDong(), dl.hop_dong), (LuuTruHoaDonThang(), dl.hoa_don_thang),
                                (LuuTruDichVuCoSo(), dl.dich_vu_co_so()),  # dịch vụ thêm + tiện ích phòng: chung một file
                                (LuuTruViPham(), dl.vi_pham), (LuuTruTaiKhoan(), dl.tai_khoan)]:

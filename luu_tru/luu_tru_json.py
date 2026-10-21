@@ -1,7 +1,7 @@
 # Phần C
 # Lớp cơ sở dùng chung cho các lớp lưu trữ. Lớp này lo TOÀN BỘ phần việc nặng:
 #   - đọc/ghi file JSON an toàn (ghi nguyên tử, không để file nửa chừng)
-#   - sao lưu sau mỗi lần ghi, tự rơi về bản sao lưu khi file chính hỏng
+#   - sao lưu sau mỗi lần ghi; đọc bản sao lưu bằng doc_sao_luu() (tầng điều phối quyết định khi nào dùng)
 #   - phát hiện file bị sửa ngoài ứng dụng bằng dấu thời gian
 # Mỗi lớp lưu trữ cụ thể (LuuTruSinhVien, LuuTruPhong...) chỉ cần khai báo:
 #   - TEN_FILE: tên file dữ liệu
@@ -113,44 +113,26 @@ class LuuTruJson(GiaoThucLuuTru[T]):
 
     def doc(self) -> dict[str, T]:
         """
-        Đọc dữ liệu, trả về dict với khóa là mã thực thể.
-
-        Thứ tự ưu tiên:
-          1. File chính, nếu đọc được và (ở lần đọc đầu tiên) không bị sửa ngoài ứng dụng.
-          2. File sao lưu, nếu file chính không tồn tại / hỏng / bị sửa ngoài ứng dụng.
-             Dùng được bản sao lưu thì ghi ngược lại để khôi phục file chính.
-          3. Dict rỗng, nếu không còn nguồn cục bộ nào dùng được.
+        Đọc dữ liệu từ file chính, trả về dict với khóa là mã thực thể.
+          - File chưa tồn tại: trả về dict rỗng.
+          - File hỏng, hoặc (ở lần đọc đầu tiên) bị sửa ngoài ứng dụng: ném ValueError.
+        Tầng điều phối bắt ValueError này rồi gọi doc_sao_luu() để lấy dữ liệu từ bản sao lưu,
+        sau đó ghi() lại để khôi phục file chính. Tầng lưu trữ KHÔNG tự làm việc đó.
         """
-        lan_dau = not self._da_kiem_tra_khoi_dong
-        self._da_kiem_tra_khoi_dong = True
-        chinh, sao_luu = self._duong_dan_chinh, self._duong_dan_sao_luu
+        if not self._da_kiem_tra_khoi_dong:
+            if self.co_bi_chinh_sua():
+                raise ValueError(f"File {self.TEN_FILE} đã bị chỉnh sửa ngoài ứng dụng hoặc bị mất đồng bộ")
+            # Chỉ đánh dấu "đã kiểm tra" khi file hợp lệ; nếu chưa khôi phục thì lần doc() sau vẫn báo lỗi tiếp
+            self._da_kiem_tra_khoi_dong = True
+        return self._doc_file(self._duong_dan_chinh)
 
-        du_lieu_chinh: dict[str, T] | None = None
-        if os.path.exists(chinh):
-            try:
-                du_lieu_chinh = self._doc_file(chinh)
-            except ValueError:
-                du_lieu_chinh = None  # file hỏng, thử bản sao lưu bên dưới
-        # Kiểm tra sửa ngoài app chỉ ở lần đọc đầu; co_bi_chinh_sua() cũng trả True khi file chính bị xóa
-        bi_chinh_sua = lan_dau and self.co_bi_chinh_sua()
-        if du_lieu_chinh is not None and not bi_chinh_sua:
-            return du_lieu_chinh
-
-        du_lieu_sao_luu: dict[str, T] | None = None
-        if os.path.exists(sao_luu):
-            try:
-                du_lieu_sao_luu = self._doc_file(sao_luu)
-            except ValueError:
-                du_lieu_sao_luu = None  # sao lưu cũng hỏng
-        if du_lieu_sao_luu is not None:
-            try:
-                self.ghi(du_lieu_sao_luu)  # khôi phục file chính (và dấu thời gian) từ bản sao lưu
-            except OSError:
-                pass  # không ghi được (ví dụ ổ đĩa chỉ đọc) thì vẫn dùng dữ liệu đã đọc
-            return du_lieu_sao_luu
-
-        # Không có sao lưu dùng được: file chính chỉ bị đánh dấu "sửa ngoài app" nhưng vẫn đọc được thì giữ dữ liệu đó
-        return du_lieu_chinh if du_lieu_chinh is not None else {}
+    def doc_sao_luu(self) -> dict[str, T]:
+        """
+        Đọc dữ liệu từ file sao lưu (thư mục .sao_luu), trả về dict với khóa là mã thực thể.
+        Chưa có file sao lưu: trả về dict rỗng. File sao lưu cũng hỏng: ném ValueError.
+        Chỉ dùng khi doc() ném ValueError.
+        """
+        return self._doc_file(self._duong_dan_sao_luu)
 
     # ---- Ghi ----
     def ghi(self, danh_sach: dict[str, T]) -> None:

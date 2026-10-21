@@ -4,10 +4,10 @@
 # Nguồn dữ liệu: API công cộng https://provinces.open-api.vn/ (bản v2 = sau sáp nhập 07/2025,
 # chỉ còn hai cấp Tỉnh -> Xã/Phường, khớp với dropdown tỉnh -> xã của màn hình sinh viên).
 #
-# Chiến lược (theo đúng thiết kế trong giao_thuc/luu_tru.py), toàn bộ nằm trong doc():
-#   1. Ưu tiên đọc file cục bộ du_lieu/dia_ly.json (nhanh, chạy được khi mất mạng)
-#   2. File chính hỏng/chưa có/bị sửa ngoài app -> lớp cha tự rơi về file sao lưu
-#   3. Sao lưu cũng hỏng/chưa có -> đọc trực tiếp từ API, và lưu lại xuống file cho lần sau
+# Chiến lược (theo đúng thiết kế trong giao_thuc/luu_tru.py):
+#   1. doc(): ưu tiên đọc file cục bộ du_lieu/dia_ly.json (nhanh, chạy được khi mất mạng); chưa có file thì tải từ API
+#   2. File chính hỏng -> doc() ném ValueError, tầng điều phối gọi doc_sao_luu() để đọc file sao lưu
+#   3. doc_sao_luu(): sao lưu cũng hỏng/chưa có -> đọc trực tiếp từ API, và lưu lại xuống file cho lần sau
 import json
 import urllib.request
 from typing import Any
@@ -91,8 +91,9 @@ class LuuTruDiaLy(LuuTruJson[Tinh]):
     # ---- Ghi đè hành vi đọc ----
     def doc(self) -> dict[str, Tinh]:
         """
-        Đọc địa lý: file cục bộ, rồi file sao lưu (lớp cha lo), rồi cuối cùng là API.
-        Nếu mất mạng và không còn dữ liệu cục bộ nào thì trả về dict rỗng.
+        Đọc địa lý từ file cục bộ (file hỏng thì ném ValueError như lớp cha).
+        Chưa có dữ liệu cục bộ (lần chạy đầu) thì tự tải từ API một lần rồi lưu lại. Nếu lúc đó mất mạng
+        thì trả về dict rỗng.
         """
         danh_sach = super().doc()
         if danh_sach or self._da_loi_api:
@@ -102,3 +103,16 @@ class LuuTruDiaLy(LuuTruJson[Tinh]):
         except ValueError:
             self._da_loi_api = True
             return {}
+
+    def doc_sao_luu(self) -> dict[str, Tinh]:
+        """
+        Đọc từ file sao lưu; nếu sao lưu cũng hỏng hoặc chưa có thì đọc trực tiếp từ API
+        (và lưu lại, khôi phục luôn cả file chính). Ném ValueError nếu API cũng không dùng được.
+        """
+        try:
+            danh_sach = super().doc_sao_luu()
+            if danh_sach:
+                return danh_sach
+        except ValueError:
+            pass  # file sao lưu hỏng -> chuyển sang API
+        return self._tai_va_luu()
