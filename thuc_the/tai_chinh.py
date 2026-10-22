@@ -2,7 +2,10 @@ from abc import ABC, abstractmethod
 from datetime import date
 from enum import Enum
 
+from dataclasses import dataclass
+
 from thuc_the._kiem_tra_ma import ktra_ma_tham_chieu_hop_le
+from thuc_the.hoc_vu import ThangNam
 from thuc_the.thuc_the_goc import ThucTheCoTen, ThucTheGoc, ThucTheLuuTruDuoc
 from tien_ich.regex import ktra_chuoi, ktra_ngay, ktra_so, la_ma_dich_vu_them, la_ma_hoa_don_thang, la_ma_hop_dong, la_so_duong
 
@@ -138,18 +141,19 @@ class HopDong(ThucTheGoc):
     def tong_tien(self) -> float: return 1
 
 class HoaDonThang(ThucTheGoc):
-    def __init__(self, ma: str, thang: int, dien_cu: int, dien_moi: int, don_gia_dien: float, nuoc_cu: int, nuoc_moi: int, don_gia_nuoc: float, phong: str, han_chot: date, trang_thai: TrangThaiHoaDon = TrangThaiHoaDon.CHUA_THANH_TOAN):
+    def __init__(self, ma: str, thang_nam: ThangNam, dien_cu: int, dien_moi: int, don_gia_dien: float, nuoc_cu: int, nuoc_moi: int, don_gia_nuoc: float, phong: str, han_chot: date, trang_thai: TrangThaiHoaDon = TrangThaiHoaDon.CHUA_THANH_TOAN):
         ktra_chuoi(ma, lambda x: la_ma_hoa_don_thang(x), "Mã hóa đơn tháng không hợp lệ")
         super().__init__(ma)
 
-        ktra_so(thang, lambda x: x > 0 and x <= 12, "Tháng phải là số dương từ 1 đến 12")
+        if not isinstance(thang_nam, ThangNam):
+            raise ValueError("Tháng năm không hợp lệ")
         ktra_so(dien_cu, lambda x: x >= 0 and x <= dien_moi, "Chỉ số điện cũ phải là số không âm và không lớn hơn chỉ số điện mới")
         ktra_so(nuoc_cu, lambda x: x >= 0 and x <= nuoc_moi, "Chỉ số nước cũ phải là số không âm và không lớn hơn chỉ số nước mới")
         ktra_so(dien_moi, lambda x: x >= 0, "Chỉ số điện mới phải là số không âm")
         ktra_so(nuoc_moi, lambda x: x >= 0, "Chỉ số nước mới phải là số không âm")
         ktra_so(don_gia_dien, lambda x: x >= 0, "Đơn giá điện phải là số không âm")
         ktra_so(don_gia_nuoc, lambda x: x >= 0, "Đơn giá nước phải là số không âm")
-        self.__thang = thang
+        self.__thang_nam = thang_nam
         self.__dien_cu = dien_cu
         self.__dien_moi = dien_moi
         self.__don_gia_dien = don_gia_dien
@@ -166,8 +170,8 @@ class HoaDonThang(ThucTheGoc):
         self.__trang_thai = trang_thai
 
     @property
-    def thang(self) -> int:
-        return self.__thang
+    def thang_nam(self) -> ThangNam:
+        return self.__thang_nam
 
     @property
     def han_chot(self) -> date:
