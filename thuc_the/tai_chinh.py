@@ -143,6 +143,10 @@ class HopDong(ThucTheGoc):
     def gia_phong(self) -> float:
         return self.__gia_co_ban + self.__phi_tien_nghi
 
+    @property
+    def con_giu_cho(self) -> bool:
+        return (self.__trang_thai == TrangThaiHopDong.CHUA_THANH_TOAN and self.__ngay_het_han >= date.today()) or (self.__trang_thai == TrangThaiHopDong.DA_THANH_TOAN and self.__ngay_ket_thuc >= date.today())
+
     def thanh_toan(self) -> None:
         if self.__trang_thai == TrangThaiHopDong.CHUA_THANH_TOAN:
             self.__trang_thai = TrangThaiHopDong.DA_THANH_TOAN
