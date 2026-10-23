@@ -48,14 +48,18 @@ class TienIchPhong(DichVuCoSo):
         super().__init__(ma, ten, don_gia)
 
 class HopDong(ThucTheGoc):
-    def __init__(self, ma: str, he_so_thang: int, ngay_bat_dau: date, ngay_ket_thuc: date, gia_co_ban: float, tien_dat_coc: float, ma_sinh_vien: str, ma_phong: str, hoc_ky: str, dich_vu_them: dict[str, float] | None = None, phi_tien_nghi: float = 0, trang_thai: TrangThaiHopDong = TrangThaiHopDong.CHUA_THANH_TOAN):
+    def __init__(self, ma: str, ngay_ky: date, ngay_het_han: date, ngay_bat_dau: date, ngay_ket_thuc: date, he_so_thang: int, gia_co_ban: float, tien_dat_coc: float, ma_sinh_vien: str, ma_phong: str, hoc_ky: str, dich_vu_them: dict[str, float] | None = None, phi_tien_nghi: float = 0, trang_thai: TrangThaiHopDong = TrangThaiHopDong.CHUA_THANH_TOAN):
         ktra_chuoi(ma, lambda x: la_ma_hop_dong(x), "Mã hợp đồng không hợp lệ")
         super().__init__(ma)
 
         ktra_ngay(ngay_ket_thuc, lambda x: True, "Ngày kết thúc rỗng hoặc không hợp lệ")
         ktra_ngay(ngay_bat_dau, lambda x: x < ngay_ket_thuc, "Ngày bắt đầu phải trước ngày kết thúc")
+        ktra_ngay(ngay_ky, lambda x: x <= ngay_bat_dau, "Ngày ký không được sau ngày bắt đầu")
+        ktra_ngay(ngay_het_han, lambda x: ngay_ky <= x <= ngay_bat_dau, "Ngày hết hạn không được trước ngày ký và sau ngày bắt đầu")
         self.__ngay_bat_dau = ngay_bat_dau
         self.__ngay_ket_thuc = ngay_ket_thuc
+        self.__ngay_ky = ngay_ky
+        self.__ngay_het_han = ngay_het_han
 
         ktra_so(he_so_thang, lambda x: la_so_duong(x), "Hệ số tháng phải là số dương")
         ktra_so(gia_co_ban, lambda x: la_so_duong(x), "Giá cơ bản phải là số dương")
@@ -90,6 +94,14 @@ class HopDong(ThucTheGoc):
     @property
     def ngay_ket_thuc(self) -> date:
         return self.__ngay_ket_thuc
+
+    @property
+    def ngay_ky(self) -> date:
+        return self.__ngay_ky
+
+    @property
+    def ngay_het_han(self) -> date:
+        return self.__ngay_het_han
 
     @property
     def gia_co_ban(self) -> float:
