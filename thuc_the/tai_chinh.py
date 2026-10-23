@@ -143,14 +143,24 @@ class HopDong(ThucTheGoc):
     def gia_phong(self) -> float:
         return self.__gia_co_ban + self.__phi_tien_nghi
 
-    # TODO: cần triển khai
     def thanh_toan(self) -> None:
-        pass
+        if self.__trang_thai == TrangThaiHopDong.CHUA_THANH_TOAN:
+            self.__trang_thai = TrangThaiHopDong.DA_THANH_TOAN
+        else:
+            raise ValueError(f"Hợp đồng {self.ma} đã được thanh toán hoặc đã kết thúc, không thể thanh toán lại")
 
     def ket_thuc(self) -> None:
-        pass
+        if self.__trang_thai != TrangThaiHopDong.KET_THUC_HOP_DONG:
+            self.__trang_thai = TrangThaiHopDong.KET_THUC_HOP_DONG
+        else:
+            raise ValueError(f"Hợp đồng {self.ma} đã kết thúc, không thể kết thúc lại")
 
-    def tong_tien(self) -> float: return 1
+    def tong_tien(self) -> float:
+        """
+        Tính tổng tiền của hợp đồng, bao gồm: giá cơ bản, phí tiện nghi, dịch vụ thêm.
+        """
+        tong_tien_dich_vu = sum(self.__dich_vu_them.values())
+        return (self.gia_phong + tong_tien_dich_vu) * self.__he_so_thang
 
 class HoaDonThang(ThucTheGoc):
     def __init__(self, ma: str, thang_nam: ThangNam, dien_cu: int, dien_moi: int, don_gia_dien: float, nuoc_cu: int, nuoc_moi: int, don_gia_nuoc: float, phong: str, han_chot: date, trang_thai: TrangThaiHoaDon = TrangThaiHoaDon.CHUA_THANH_TOAN):
@@ -221,6 +231,16 @@ class HoaDonThang(ThucTheGoc):
     def don_gia_nuoc(self) -> float:
         return self.__don_gia_nuoc
 
-    def tong_tien(self) -> float: return 1
+    def tong_tien(self) -> float:
+        """
+        Tính tổng tiền của hóa đơn tháng, bao gồm: tiền điện, tiền nước.
+        """
+        tien_dien = (self.__dien_moi - self.__dien_cu) * self.__don_gia_dien
+        tien_nuoc = (self.__nuoc_moi - self.__nuoc_cu) * self.__don_gia_nuoc
+        return tien_dien + tien_nuoc
 
-    def thanh_toan(self) -> None: pass
+    def thanh_toan(self) -> None:
+        if self.__trang_thai != TrangThaiHoaDon.DA_THANH_TOAN:
+            self.__trang_thai = TrangThaiHoaDon.DA_THANH_TOAN
+        else:
+            raise ValueError(f"Hóa đơn tháng {self.ma} đã được thanh toán, không thể thanh toán lại")

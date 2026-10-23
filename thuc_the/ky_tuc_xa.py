@@ -46,15 +46,15 @@ class SinhVien(ThucTheCoTen, ThucTheLuuTruDuoc):
         return self.__hop_dong
 
     @property
-    def dia_chi_chi_tiet(self) -> str | None:
+    def dia_chi_chi_tiet(self) -> str:
         return self.__dia_chi_chi_tiet
 
     @property
-    def xa(self) -> str | None:
+    def xa(self) -> str:
         return self.__xa
 
     @property
-    def tinh(self) -> str | None:
+    def tinh(self) -> str:
         return self.__tinh
 
     @sdt.setter
@@ -152,7 +152,6 @@ class Phong(ThucTheCoTen, ThucTheLuuTruDuoc):
         ktra_so(value, lambda x: la_so_duong(x), "Giá phòng phải là số dương")
         self.__gia_phong = value
 
-    # TODO: cần triển khai
     def con_phong(self) -> bool:
         return len(self.danh_sach_sinh_vien) < self.suc_chua
 
@@ -161,28 +160,52 @@ class Phong(ThucTheCoTen, ThucTheLuuTruDuoc):
         Thêm sinh viên vào phòng.
         Ném lỗi hợp lệ khi cần
         """
-        pass
+        if not self.con_phong():
+            raise ValueError("Phòng đã đầy, không thể thêm sinh viên")
+        if isinstance(sinh_vien, SinhVien):
+            if sinh_vien.phong_hien_tai is not None:
+                raise ValueError(f"Sinh viên {sinh_vien.ma} đã có phòng hiện tại: {sinh_vien.phong_hien_tai}")
+            self.__danh_sach_sinh_vien.add(sinh_vien.ma)
+        else:
+            ktra_ma_tham_chieu_hop_le(sinh_vien, "Mã sinh viên")
+            self.__danh_sach_sinh_vien.add(sinh_vien)
 
     def xoa_sinh_vien(self, sinh_vien: SinhVien | str) -> None:
         """
         Xóa sinh viên khỏi phòng bằng đối tượng hoặc mã sinh viên.
         Ném lỗi hợp lệ khi cần
         """
-        pass
+        if isinstance(sinh_vien, SinhVien):
+            if sinh_vien.phong_hien_tai != self.ma or sinh_vien.ma not in self.__danh_sach_sinh_vien:
+                raise ValueError(f"Sinh viên {sinh_vien.ma} không ở phòng {self.ma}")
+            self.__danh_sach_sinh_vien.remove(sinh_vien.ma)
+        else:
+            ktra_ma_tham_chieu_hop_le(sinh_vien, "Mã sinh viên")
+            if sinh_vien not in self.__danh_sach_sinh_vien:
+                raise ValueError(f"Sinh viên {sinh_vien} không ở phòng {self.ma}")
+            self.__danh_sach_sinh_vien.remove(sinh_vien)
 
     def them_tien_ich(self, tien_ich: TienIchPhong | str) -> None:
         """
         Thêm tiện ích vào phòng.
         Ném lỗi hợp lệ khi cần
         """
-        pass
+        ma = tien_ich.ma if isinstance(tien_ich, TienIchPhong) else tien_ich
+        ktra_ma_tham_chieu_hop_le(ma, "Mã tiện ích")
+        if ma in self.__tien_ich_phong:
+            raise ValueError(f"Phòng {self.ma} đã có tiện ích {ma}")
+        self.__tien_ich_phong.add(ma)
 
     def xoa_tien_ich(self, tien_ich: TienIchPhong | str) -> None:
         """
         Xóa tiện ích khỏi phòng bằng đối tượng hoặc mã tiện ích.
         Ném lỗi hợp lệ khi cần
         """
-        pass
+        ma = tien_ich.ma if isinstance(tien_ich, TienIchPhong) else tien_ich
+        ktra_ma_tham_chieu_hop_le(ma, "Mã tiện ích")
+        if ma not in self.__tien_ich_phong:
+            raise ValueError(f"Phòng {self.ma} không có tiện ích {ma}")
+        self.__tien_ich_phong.remove(ma)
 
 class ToaNha(ThucTheCoTen, ThucTheLuuTruDuoc):
     def __init__(self, ma: str, ten: str, so_tang: int):
@@ -215,11 +238,23 @@ class ToaNha(ThucTheCoTen, ThucTheLuuTruDuoc):
         Thêm đối tượng phòng vào tòa nhà.
         Ném lỗi hợp lệ khi cần
         """
-        pass
+        if isinstance(phong, Phong):
+            if phong.toa_nha != self.ma:
+                raise ValueError(f"Phòng {phong.ma} không thuộc tòa nhà {self.ma}")
+            self.__danh_sach_phong.add(phong.ma)
+        else:
+            ktra_ma_tham_chieu_hop_le(phong, "Mã phòng")
+            self.__danh_sach_phong.add(phong)
 
     def xoa_phong(self, phong: Phong | str) -> None:
         """
         Xóa phòng bằng mã phòng hoặc đối tượng phòng.
         Ném lỗi hợp lệ khi cần
         """
-        pass
+        if isinstance(phong, Phong):
+            if phong.toa_nha != self.ma:
+                raise ValueError(f"Phòng {phong.ma} không thuộc tòa nhà {self.ma}")
+            self.__danh_sach_phong.remove(phong.ma)
+        else:
+            ktra_ma_tham_chieu_hop_le(phong, "Mã phòng")
+            self.__danh_sach_phong.remove(phong)
