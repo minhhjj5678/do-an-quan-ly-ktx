@@ -48,14 +48,18 @@ class TienIchPhong(DichVuCoSo):
         super().__init__(ma, ten, don_gia)
 
 class HopDong(ThucTheGoc):
-    def __init__(self, ma: str, he_so_thang: int, ngay_bat_dau: date, ngay_ket_thuc: date, gia_co_ban: float, tien_dat_coc: float, ma_sinh_vien: str, ma_phong: str, hoc_ky: str, dich_vu_them: dict[str, float] | None = None, phi_tien_nghi: float = 0, trang_thai: TrangThaiHopDong = TrangThaiHopDong.CHUA_THANH_TOAN):
+    def __init__(self, ma: str, ngay_ky: date, ngay_het_han: date, ngay_bat_dau: date, ngay_ket_thuc: date, he_so_thang: int, gia_co_ban: float, tien_dat_coc: float, ma_sinh_vien: str, ma_phong: str, hoc_ky: str, dich_vu_them: dict[str, float] | None = None, phi_tien_nghi: float = 0, trang_thai: TrangThaiHopDong = TrangThaiHopDong.CHUA_THANH_TOAN):
         ktra_chuoi(ma, lambda x: la_ma_hop_dong(x), "Mã hợp đồng không hợp lệ")
         super().__init__(ma)
 
         ktra_ngay(ngay_ket_thuc, lambda x: True, "Ngày kết thúc rỗng hoặc không hợp lệ")
         ktra_ngay(ngay_bat_dau, lambda x: x < ngay_ket_thuc, "Ngày bắt đầu phải trước ngày kết thúc")
+        ktra_ngay(ngay_ky, lambda x: x <= ngay_bat_dau, "Ngày ký không được sau ngày bắt đầu")
+        ktra_ngay(ngay_het_han, lambda x: ngay_ky <= x <= ngay_bat_dau, "Ngày hết hạn không được trước ngày ký và sau ngày bắt đầu")
         self.__ngay_bat_dau = ngay_bat_dau
         self.__ngay_ket_thuc = ngay_ket_thuc
+        self.__ngay_ky = ngay_ky
+        self.__ngay_het_han = ngay_het_han
 
         ktra_so(he_so_thang, lambda x: la_so_duong(x), "Hệ số tháng phải là số dương")
         ktra_so(gia_co_ban, lambda x: la_so_duong(x), "Giá cơ bản phải là số dương")
@@ -90,6 +94,14 @@ class HopDong(ThucTheGoc):
     @property
     def ngay_ket_thuc(self) -> date:
         return self.__ngay_ket_thuc
+
+    @property
+    def ngay_ky(self) -> date:
+        return self.__ngay_ky
+
+    @property
+    def ngay_het_han(self) -> date:
+        return self.__ngay_het_han
 
     @property
     def gia_co_ban(self) -> float:
@@ -131,14 +143,28 @@ class HopDong(ThucTheGoc):
     def gia_phong(self) -> float:
         return self.__gia_co_ban + self.__phi_tien_nghi
 
-    # TODO: cần triển khai
+    @property
+    def con_giu_cho(self) -> bool:
+        return (self.__trang_thai == TrangThaiHopDong.CHUA_THANH_TOAN and self.__ngay_het_han >= date.today()) or (self.__trang_thai == TrangThaiHopDong.DA_THANH_TOAN and self.__ngay_ket_thuc >= date.today())
+
     def thanh_toan(self) -> None:
-        pass
+        if self.__trang_thai == TrangThaiHopDong.CHUA_THANH_TOAN:
+            self.__trang_thai = TrangThaiHopDong.DA_THANH_TOAN
+        else:
+            raise ValueError(f"Hợp đồng {self.ma} đã được thanh toán hoặc đã kết thúc, không thể thanh toán lại")
 
     def ket_thuc(self) -> None:
-        pass
+        if self.__trang_thai != TrangThaiHopDong.KET_THUC_HOP_DONG:
+            self.__trang_thai = TrangThaiHopDong.KET_THUC_HOP_DONG
+        else:
+            raise ValueError(f"Hợp đồng {self.ma} đã kết thúc, không thể kết thúc lại")
 
-    def tong_tien(self) -> float: return 1
+    def tong_tien(self) -> float:
+        """
+        Tính tổng tiền của hợp đồng, bao gồm: giá cơ bản, phí tiện nghi, dịch vụ thêm.
+        """
+        tong_tien_dich_vu = sum(self.__dich_vu_them.values())
+        return (self.gia_phong + tong_tien_dich_vu) * self.__he_so_thang
 
 class HoaDonThang(ThucTheGoc):
     def __init__(self, ma: str, thang_nam: ThangNam, dien_cu: int, dien_moi: int, don_gia_dien: float, nuoc_cu: int, nuoc_moi: int, don_gia_nuoc: float, phong: str, han_chot: date, trang_thai: TrangThaiHoaDon = TrangThaiHoaDon.CHUA_THANH_TOAN):
@@ -209,6 +235,16 @@ class HoaDonThang(ThucTheGoc):
     def don_gia_nuoc(self) -> float:
         return self.__don_gia_nuoc
 
-    def tong_tien(self) -> float: return 1
+    def tong_tien(self) -> float:
+        """
+        Tính tổng tiền của hóa đơn tháng, bao gồm: tiền điện, tiền nước.
+        """
+        tien_dien = (self.__dien_moi - self.__dien_cu) * self.__don_gia_dien
+        tien_nuoc = (self.__nuoc_moi - self.__nuoc_cu) * self.__don_gia_nuoc
+        return tien_dien + tien_nuoc
 
-    def thanh_toan(self) -> None: pass
+    def thanh_toan(self) -> None:
+        if self.__trang_thai != TrangThaiHoaDon.DA_THANH_TOAN:
+            self.__trang_thai = TrangThaiHoaDon.DA_THANH_TOAN
+        else:
+            raise ValueError(f"Hóa đơn tháng {self.ma} đã được thanh toán, không thể thanh toán lại")

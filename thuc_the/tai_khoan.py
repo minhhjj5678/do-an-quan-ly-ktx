@@ -35,8 +35,8 @@ class TaiKhoan(ThucTheGoc, ThucTheLuuTruDuoc):
         return self.__loai_tai_khoan == LoaiTaiKhoan.QUAN_TRI_VIEN
 
     def doi_mat_khau(self, mat_khau_bam_moi: str):
-        pass
+        self.__mat_khau_bam = mat_khau_bam_moi
 
     def kiem_tra(self, mat_khau_bam: str) -> bool:
         """Kiểm tra mật khẩu đã băm có khớp với mật khẩu tài khoản hay không"""
-        return True
+        return self.__mat_khau_bam == mat_khau_bam
