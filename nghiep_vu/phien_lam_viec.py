@@ -7,9 +7,9 @@
 # bộ nhớ (self._tai_khoan). Mọi thao tác sau đó (đăng nhập, tạo tài khoản, đổi mật khẩu) làm việc trên bản
 # trong bộ nhớ, và chỉ GHI xuống file khi có thay đổi; không đọc lại file.
 #
-# Lưu ý quan trọng: ở đây KHÔNG dùng TaiKhoan.kiem_tra() và TaiKhoan.doi_mat_khau() của thực thể,
-# vì hiện hai hàm đó là hàm giữ chỗ của phần B (kiem_tra luôn trả True => ai nhập mật khẩu gì cũng qua).
-# Việc so mật khẩu tự làm bằng tien_ich/bam_mat_khau.py; đổi mật khẩu thì tạo lại đối tượng TaiKhoan mới.
+# Lưu ý: KHÔNG dùng TaiKhoan.kiem_tra() để xác thực. Hàm đó so hai chuỗi băm có BẰNG NHAU, trong khi mật khẩu ở đây
+# được băm kèm "muối" ngẫu nhiên (cùng một mật khẩu cho ra mỗi lần một chuỗi khác), nên phải kiểm tra bằng
+# tien_ich/bam_mat_khau.kiem_tra_mat_khau. Đổi mật khẩu thì dùng TaiKhoan.doi_mat_khau() của thực thể.
 from functools import cache
 
 from giao_thuc.luu_tru import GiaoThucLuuTru
@@ -69,19 +69,19 @@ class PhienLamViec(GiaoThucPhienLamViec):
         self._luu_tru.ghi(tai_khoan_moi)
         self._tai_khoan = tai_khoan_moi
 
-    def _doi_mat_khau_bam(self, cu: TaiKhoan, mat_khau_bam_moi: str) -> None:
+    def _doi_mat_khau_bam(self, tai_khoan: TaiKhoan, mat_khau_bam_moi: str) -> None:
         """
-        Đổi mật khẩu bằng cách dựng một TaiKhoan mới (thực thể không có setter cho mật khẩu),
-        giữ nguyên tên, loại, chủ thể và trạng thái hoạt động.
+        Đổi mật khẩu bằng TaiKhoan.doi_mat_khau() của thực thể (sửa tại chỗ, nên người đang đăng nhập
+        cũng thấy ngay vì dùng chung một đối tượng), rồi ghi xuống file.
+        Ghi file lỗi thì trả lại mật khẩu cũ để bộ nhớ vẫn khớp với file.
         """
-        moi = TaiKhoan(cu.ma, mat_khau_bam_moi, cu.loai_tai_khoan, cu.ma_chu_the)
-        if not cu.con_hoat_dong:
-            moi.luu_tru()
-        # {**dict_cu, khóa: giá_trị_mới} thay giá trị tại ĐÚNG vị trí cũ nên thứ tự tài khoản không đổi
-        self._luu({**self._tai_khoan, cu.ma: moi})
-        # Nếu vừa đổi mật khẩu của chính người đang đăng nhập thì cập nhật đối tượng đang giữ
-        if self._tai_khoan_hien_tai is not None and self._tai_khoan_hien_tai.ma == moi.ma:
-            self._tai_khoan_hien_tai = moi
+        mat_khau_bam_cu = tai_khoan.mat_khau_bam
+        tai_khoan.doi_mat_khau(mat_khau_bam_moi)
+        try:
+            self._luu_tru.ghi(self._tai_khoan)
+        except Exception:
+            tai_khoan.doi_mat_khau(mat_khau_bam_cu)
+            raise
 
     # ---- Giao thức ----
     @property

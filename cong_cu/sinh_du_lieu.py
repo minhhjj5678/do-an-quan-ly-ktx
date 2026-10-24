@@ -4,7 +4,8 @@
 #
 # Điểm quan trọng nhất là dữ liệu phải ĐÚNG RÀNG BUỘC CHÉO (bộ sinh được viết để luôn thỏa các điều kiện này), ví dụ:
 #   - sinh viên có phòng_hiện_tại = P0005 thì phòng P0005 phải tồn tại VÀ có mã sinh viên đó trong danh sách
-#   - số sinh viên trong phòng không vượt sức chứa
+#   - số sinh viên trong phòng không vượt sức chứa, và số hợp đồng đang giữ chỗ (HopDong.con_giu_cho)
+#     của mỗi phòng cũng không vượt sức chứa
 #   - hợp đồng "đã thanh toán" <=> sinh viên đang ở đúng phòng của hợp đồng đó
 #   - thực thể đã lưu trữ (ngừng hoạt động) không được còn hợp đồng đang hiệu lực
 # Việc kiểm tra lại các điều kiện đó do tầng nghiệp vụ đảm nhiệm: chay() gọi nghiep_vu.kiem_cheo_du_lieu.
@@ -17,7 +18,7 @@ import argparse
 import os
 import random
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 
 from thuc_the.dia_ly import Tinh
 from nghiep_vu.kiem_cheo_du_lieu import KhoDuLieu, kiem_cheo_du_lieu
@@ -58,7 +59,7 @@ _TAI_SAN = [("Làm vỡ kính cửa sổ", 250_000.0), ("Làm hỏng ổ khóa c
 
 @dataclass
 class _KeHoachPhong:
-    """Bản nháp của một phòng trong lúc xếp chỗ. Phong thật chưa có hàm thêm sinh viên, nên xếp xong mới dựng Phong."""
+    """Bản nháp của một phòng trong lúc xếp chỗ. Xếp xong toàn bộ mới dựng Phong thật từ bản nháp này."""
     ma: str
     ten: str
     suc_chua: int
@@ -68,28 +69,33 @@ class _KeHoachPhong:
     tien_ich: set[str]
     phi_tien_nghi: float  # tổng giá tiện ích của phòng chia đều cho sức chứa, tức phần mỗi người chịu
     hoat_dong: bool = True
-    sinh_vien: list[str] | None = None
+    sinh_vien: list[str] | None = None  # sinh viên đang ở (hợp đồng đã thanh toán)
+    so_cho_giu: int = 0  # số hợp đồng chưa thanh toán nhưng còn hạn giữ chỗ
 
     def __post_init__(self) -> None:
         self.sinh_vien = []
 
     def con_cho(self) -> bool:
-        return len(self.sinh_vien) < self.suc_chua  # type: ignore[arg-type]
+        """Còn chỗ khi (người đang ở + chỗ đang được giữ) chưa chạm sức chứa, đúng quy tắc của HopDong.con_giu_cho."""
+        return len(self.sinh_vien) + self.so_cho_giu < self.suc_chua  # type: ignore[arg-type]
 
 
 # ---------------------------------------------------------------- học kỳ
 def _sinh_hoc_ky(hom_nay: date) -> list[HocKy]:
     """
-    Ba học kỳ gần nhất (đã bắt đầu tính đến hôm nay), xếp từ cũ đến mới; học kỳ cuối là "học kỳ hiện tại".
+    Bốn học kỳ xếp từ cũ đến mới:
+      [0], [1]: hai học kỳ đã kết thúc (hợp đồng đã kết thúc, hoặc đăng ký rồi không đóng tiền)
+      [2]: học kỳ hiện tại, tức học kỳ đầu tiên chưa kết thúc (đang diễn ra, hoặc sắp bắt đầu nếu đang nghỉ giữa hai kỳ)
+      [3]: học kỳ kế tiếp, nơi sinh viên vừa đăng ký và đang giữ chỗ
     Mỗi năm học có HK1 (1/9 - 15/1) và HK2 (1/2 - 15/6).
     """
     cac_ky = []
-    for nam in range(hom_nay.year - 2, hom_nay.year + 1):
+    for nam in range(hom_nay.year - 2, hom_nay.year + 2):
         cac_ky.append((1, nam, date(nam, 9, 1), date(nam + 1, 1, 15)))
         cac_ky.append((2, nam, date(nam + 1, 2, 1), date(nam + 1, 6, 15)))
-    da_bat_dau = [k for k in cac_ky if k[2] <= hom_nay][-3:]
+    vi_tri_hien_tai = next(i for i, k in enumerate(cac_ky) if k[3] >= hom_nay)
     ket_qua: list[HocKy] = []
-    for so_ky, nam, bat_dau, ket_thuc in da_bat_dau:
+    for so_ky, nam, bat_dau, ket_thuc in cac_ky[vi_tri_hien_tai - 2: vi_tri_hien_tai + 2]:
         ma = tao_ma.ma_hoc_ky([hk.ma for hk in ket_qua])
         ket_qua.append(HocKy(ma=ma, ten=f"Học kỳ {so_ky} năm học {nam}-{nam + 1}", ngay_bat_dau=bat_dau, ngay_ket_thuc=ket_thuc))
     return ket_qua
@@ -180,39 +186,65 @@ def _chon_phong_con_cho(rng: random.Random, cac_phong: list[_KeHoachPhong]) -> _
     return rng.choice(da_co_nguoi if da_co_nguoi and rng.random() < 0.5 else con_cho)
 
 
+def _ngay_ky_va_het_han(rng: random.Random, hoc_ky: HocKy, hom_nay: date, dang_cho: bool) -> tuple[date, date]:
+    """
+    Trả về (ngày ký, ngày hết hạn giữ chỗ) thỏa quy tắc của HopDong: ngày ký <= ngày hết hạn <= ngày bắt đầu.
+      - dang_cho=True: hợp đồng vừa đăng ký cho học kỳ SẮP TỚI và còn hạn giữ chỗ: ký trong 10 ngày qua, hết hạn từ hôm
+        nay trở đi (nhưng không quá ngày bắt đầu học kỳ), để HopDong.con_giu_cho là True.
+      - dang_cho=False: hợp đồng bình thường ký trước ngày bắt đầu 20-60 ngày, hạn thanh toán là 14 ngày sau khi ký.
+    """
+    bat_dau = hoc_ky.ngay_bat_dau
+    if dang_cho:
+        ngay_ky = hom_nay - timedelta(days=rng.randint(0, 10))
+        ngay_het_han = min(bat_dau, hom_nay + timedelta(days=rng.randint(1, 14)))
+    else:
+        ngay_ky = bat_dau - timedelta(days=rng.randint(20, 60))
+        ngay_het_han = min(bat_dau, ngay_ky + timedelta(days=14))
+    return ngay_ky, ngay_het_han
+
+
 def _tao_hop_dong(rng: random.Random, cac_hd: list[HopDong], sv: SinhVien, phong: _KeHoachPhong, hoc_ky: HocKy,
-                  cac_dv_dang_dung: list[DichVuThem], trang_thai: TrangThaiHopDong) -> HopDong:
+                  cac_dv_dang_dung: list[DichVuThem], trang_thai: TrangThaiHopDong, hom_nay: date,
+                  dang_cho: bool = False) -> HopDong:
     so_ngay = (hoc_ky.ngay_ket_thuc - hoc_ky.ngay_bat_dau).days
     # Dịch vụ thêm: lưu {mã dịch vụ: đơn giá tại thời điểm ký}. Chỉ dùng dịch vụ còn hoạt động.
     dich_vu = {dv.ma: dv.don_gia for dv in rng.sample(cac_dv_dang_dung, rng.randint(0, 3))}
-    hd = HopDong(
-        ma=tao_ma.ma_hop_dong(cac_hd), he_so_thang=round(so_ngay / 30),
+    ngay_ky, ngay_het_han = _ngay_ky_va_het_han(rng, hoc_ky, hom_nay, dang_cho)
+    return HopDong(
+        ma=tao_ma.ma_hop_dong(cac_hd), ngay_ky=ngay_ky, ngay_het_han=ngay_het_han, he_so_thang=round(so_ngay / 30),
         ngay_bat_dau=hoc_ky.ngay_bat_dau, ngay_ket_thuc=hoc_ky.ngay_ket_thuc,
         gia_co_ban=phong.gia, tien_dat_coc=phong.gia,  # đặt cọc một tháng
         ma_sinh_vien=sv.ma, ma_phong=phong.ma, hoc_ky=hoc_ky.ma,
         dich_vu_them=dich_vu, phi_tien_nghi=phong.phi_tien_nghi, trang_thai=trang_thai)
-    return hd
 
 
 def _xep_hop_dong(rng: random.Random, cac_sv: list[SinhVien], cac_phong: list[_KeHoachPhong],
-                  cac_hk: list[HocKy], cac_dv: list[DichVuThem]) -> list[HopDong]:
+                  cac_hk: list[HocKy], cac_dv: list[DichVuThem], hom_nay: date) -> list[HopDong]:
     """
-    Mỗi sinh viên rơi vào một kịch bản:
-      - "o"   (~60%): đang ở, có hợp đồng ĐÃ THANH TOÁN ở học kỳ hiện tại (có thể kèm hợp đồng cũ đã kết thúc)
-      - "cho" (~10%): vừa đăng ký, hợp đồng CHƯA THANH TOÁN, chưa vào ở
-      - "cu"  (~15%): chỉ có hợp đồng ĐÃ KẾT THÚC ở các học kỳ trước
-      - "moi" (~15%): chưa có hợp đồng nào
+    Mỗi sinh viên rơi vào một kịch bản (cac_hk = [đã kết thúc, đã kết thúc, hiện tại, kế tiếp]):
+      - "o"      (~55%): đang ở, hợp đồng ĐÃ THANH TOÁN ở học kỳ hiện tại (có thể kèm hợp đồng cũ đã kết thúc)
+      - "cho"    (~10%): vừa đăng ký học kỳ KẾ TIẾP, hợp đồng CHƯA THANH TOÁN nhưng còn hạn giữ chỗ, chưa vào ở
+      - "het_han" (~5%): đăng ký học kỳ trước rồi không đóng tiền, hợp đồng CHƯA THANH TOÁN và đã quá hạn (không giữ chỗ)
+      - "cu"     (~15%): chỉ có hợp đồng ĐÃ KẾT THÚC ở các học kỳ trước
+      - "moi"    (~15%): chưa có hợp đồng nào
     Sinh viên đã lưu trữ (tốt nghiệp) luôn thuộc kịch bản "cu".
+    Mỗi phòng chỉ được xếp thêm khi (người đang ở + hợp đồng đang giữ chỗ) chưa chạm sức chứa.
     """
-    hk_hien_tai, cac_hk_truoc = cac_hk[-1], cac_hk[:-1]
+    cac_hk_truoc, hk_hien_tai, hk_ke_tiep = cac_hk[:2], cac_hk[2], cac_hk[3]
     dv_hoat_dong = [dv for dv in cac_dv if dv.con_hoat_dong]
     cac_hd: list[HopDong] = []
+
+    def tao(sv: SinhVien, phong: _KeHoachPhong, hk: HocKy, trang_thai: TrangThaiHopDong, dang_cho: bool = False) -> HopDong:
+        hd = _tao_hop_dong(rng, cac_hd, sv, phong, hk, dv_hoat_dong, trang_thai, hom_nay, dang_cho)
+        cac_hd.append(hd)
+        return hd
+
     for sv in cac_sv:
         if rng.random() < 0.10:  # ~10% sinh viên đã tốt nghiệp/rời đi -> lưu trữ
             sv.luu_tru()
             kich_ban = "cu"
         else:
-            kich_ban = rng.choices(["o", "cho", "cu", "moi"], weights=[60, 10, 15, 15])[0]
+            kich_ban = rng.choices(["o", "cho", "het_han", "cu", "moi"], weights=[55, 10, 5, 15, 15])[0]
 
         # Hợp đồng đã kết thúc ở các học kỳ trước (phòng nào cũng được, kể cả phòng nay đã ngừng sử dụng)
         if kich_ban == "cu":
@@ -222,13 +254,12 @@ def _xep_hop_dong(rng: random.Random, cac_sv: list[SinhVien], cac_phong: list[_K
         else:
             cac_ky_cu = []
         for hk in cac_ky_cu:
-            cac_hd.append(_tao_hop_dong(rng, cac_hd, sv, rng.choice(cac_phong), hk, dv_hoat_dong, TrangThaiHopDong.KET_THUC_HOP_DONG))
+            tao(sv, rng.choice(cac_phong), hk, TrangThaiHopDong.KET_THUC_HOP_DONG)
 
         if kich_ban == "o":
             phong = _chon_phong_con_cho(rng, cac_phong)
             if phong is not None:  # hết chỗ thì sinh viên này coi như chưa có hợp đồng hiện tại
-                hd = _tao_hop_dong(rng, cac_hd, sv, phong, hk_hien_tai, dv_hoat_dong, TrangThaiHopDong.DA_THANH_TOAN)
-                cac_hd.append(hd)
+                hd = tao(sv, phong, hk_hien_tai, TrangThaiHopDong.DA_THANH_TOAN)
                 # Cập nhật cả hai phía của quan hệ: phòng có sinh viên VÀ sinh viên biết phòng/hợp đồng của mình
                 phong.sinh_vien.append(sv.ma)  # type: ignore[union-attr]
                 sv.phong_hien_tai = phong.ma
@@ -236,7 +267,11 @@ def _xep_hop_dong(rng: random.Random, cac_sv: list[SinhVien], cac_phong: list[_K
         elif kich_ban == "cho":
             phong = _chon_phong_con_cho(rng, cac_phong)
             if phong is not None:
-                cac_hd.append(_tao_hop_dong(rng, cac_hd, sv, phong, hk_hien_tai, dv_hoat_dong, TrangThaiHopDong.CHUA_THANH_TOAN))
+                tao(sv, phong, hk_ke_tiep, TrangThaiHopDong.CHUA_THANH_TOAN, dang_cho=True)
+                phong.so_cho_giu += 1  # hợp đồng này đang giữ một chỗ của phòng
+        elif kich_ban == "het_han":
+            # Quá hạn nên không giữ chỗ: phòng nào cũng được, không tính vào sức chứa
+            tao(sv, rng.choice(cac_phong), cac_hk_truoc[-1], TrangThaiHopDong.CHUA_THANH_TOAN)
     return cac_hd
 
 
@@ -329,7 +364,7 @@ def sinh_du_lieu(so_sinh_vien: int = 80, seed: int | None = None, hom_nay: date 
     cac_dv, cac_ti = _sinh_dich_vu()
     cac_toa, ke_hoach_phong = _lap_ke_hoach_phong(rng, [ti for ti in cac_ti if ti.con_hoat_dong])
     cac_sv = _sinh_sinh_vien(rng, so_sinh_vien, dia_chi)
-    cac_hd = _xep_hop_dong(rng, cac_sv, ke_hoach_phong, cac_hk, cac_dv)  # đồng thời xếp sinh viên vào phòng
+    cac_hd = _xep_hop_dong(rng, cac_sv, ke_hoach_phong, cac_hk, cac_dv, hom_nay)  # đồng thời xếp sinh viên vào phòng
     cac_hoa_don = _sinh_hoa_don(rng, ke_hoach_phong, hom_nay)
 
     # Xếp chỗ xong mới dựng Phong và ToaNha thật. Hai class này chỉ cho thêm sinh viên / phòng qua

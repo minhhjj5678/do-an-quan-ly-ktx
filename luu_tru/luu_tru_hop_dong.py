@@ -16,6 +16,8 @@ class LuuTruHopDong(LuuTruJson[HopDong]):
         return {
             "ma": hd.ma,
             "he_so_thang": hd.he_so_thang,
+            "ngay_ky": hd.ngay_ky.isoformat(),
+            "ngay_het_han": hd.ngay_het_han.isoformat(),  # hạn giữ chỗ khi chưa thanh toán
             # JSON không có kiểu ngày -> lưu chuỗi ISO "2026-10-14", đọc lại bằng date.fromisoformat
             "ngay_bat_dau": hd.ngay_bat_dau.isoformat(),
             "ngay_ket_thuc": hd.ngay_ket_thuc.isoformat(),
@@ -33,6 +35,7 @@ class LuuTruHopDong(LuuTruJson[HopDong]):
     def _tu_dict(self, d: dict[str, Any]) -> HopDong:
         return HopDong(
             ma=d["ma"], he_so_thang=d["he_so_thang"],
+            ngay_ky=date.fromisoformat(d["ngay_ky"]), ngay_het_han=date.fromisoformat(d["ngay_het_han"]),
             ngay_bat_dau=date.fromisoformat(d["ngay_bat_dau"]), ngay_ket_thuc=date.fromisoformat(d["ngay_ket_thuc"]),
             gia_co_ban=d["gia_co_ban"], tien_dat_coc=d["tien_dat_coc"],
             ma_sinh_vien=d["ma_sinh_vien"], ma_phong=d["ma_phong"], hoc_ky=d["hoc_ky"],
