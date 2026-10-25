@@ -76,9 +76,9 @@ class _KeHoachPhong:
         self.sinh_vien = []
         self.hop_dong = []
 
-    def con_cho(self) -> bool:
-        """Còn chỗ khi số hợp đồng đang giữ chỗ chưa chạm sức chứa. Việc "đang giữ chỗ" do HopDong.con_giu_cho quyết định."""
-        return sum(1 for hd in self.hop_dong if hd.con_giu_cho) < self.suc_chua  # type: ignore[union-attr]
+    def con_cho(self, hom_nay: date) -> bool:
+        """Còn chỗ khi số hợp đồng đang giữ chỗ chưa chạm sức chứa. Việc "đang giữ chỗ" do HopDong.con_giu_cho(hom_nay) quyết định."""
+        return sum(1 for hd in self.hop_dong if hd.con_giu_cho(hom_nay)) < self.suc_chua  # type: ignore[union-attr]
 
 
 # ---------------------------------------------------------------- học kỳ
@@ -178,9 +178,9 @@ def _sinh_sinh_vien(rng: random.Random, so_luong: int, dia_chi: list[tuple[str, 
 
 
 # ---------------------------------------------------------------- hợp đồng và xếp chỗ
-def _chon_phong_con_cho(rng: random.Random, cac_phong: list[_KeHoachPhong]) -> _KeHoachPhong | None:
+def _chon_phong_con_cho(rng: random.Random, cac_phong: list[_KeHoachPhong], hom_nay: date) -> _KeHoachPhong | None:
     """Chọn phòng đang hoạt động còn chỗ. Ưu tiên (50%) phòng đã có người để có cả phòng đông lẫn phòng trống."""
-    con_cho = [p for p in cac_phong if p.hoat_dong and p.con_cho()]
+    con_cho = [p for p in cac_phong if p.hoat_dong and p.con_cho(hom_nay)]
     if not con_cho:
         return None
     da_co_nguoi = [p for p in con_cho if p.sinh_vien]
@@ -259,7 +259,7 @@ def _xep_hop_dong(rng: random.Random, cac_sv: list[SinhVien], cac_phong: list[_K
             tao(sv, rng.choice(cac_phong), hk, TrangThaiHopDong.KET_THUC_HOP_DONG)
 
         if kich_ban == "o":
-            phong = _chon_phong_con_cho(rng, cac_phong)
+            phong = _chon_phong_con_cho(rng, cac_phong, hom_nay)
             if phong is not None:  # hết chỗ thì sinh viên này coi như chưa có hợp đồng hiện tại
                 hd = tao(sv, phong, hk_hien_tai, TrangThaiHopDong.DA_THANH_TOAN)
                 # Cập nhật cả hai phía của quan hệ: phòng có sinh viên VÀ sinh viên biết phòng/hợp đồng của mình
@@ -267,7 +267,7 @@ def _xep_hop_dong(rng: random.Random, cac_sv: list[SinhVien], cac_phong: list[_K
                 sv.phong_hien_tai = phong.ma
                 sv.hop_dong = hd.ma
         elif kich_ban == "cho":
-            phong = _chon_phong_con_cho(rng, cac_phong)
+            phong = _chon_phong_con_cho(rng, cac_phong, hom_nay)
             if phong is not None:
                 tao(sv, phong, hk_ke_tiep, TrangThaiHopDong.CHUA_THANH_TOAN, dang_cho=True)
         elif kich_ban == "het_han":
@@ -341,23 +341,23 @@ def _thanh_dict(danh_sach: list) -> dict:
     return {tt.ma: tt for tt in danh_sach}
 
 
-def sinh_du_lieu(so_sinh_vien: int = 80, seed: int | None = None, dia_ly: list[Tinh] | None = None,
-                 so_vong_bam: int = SO_VONG_MAC_DINH) -> KhoDuLieu:
+def sinh_du_lieu(so_sinh_vien: int = 80, seed: int | None = None, hom_nay: date | None = None,
+                 dia_ly: list[Tinh] | None = None, so_vong_bam: int = SO_VONG_MAC_DINH) -> KhoDuLieu:
     """
     Sinh một bộ dữ liệu mẫu hoàn chỉnh trong bộ nhớ (chưa ghi file, xem ghi_du_lieu).
 
     Tham số:
         - so_sinh_vien: số sinh viên cần sinh (tối thiểu 1).
-        - seed: hạt giống ngẫu nhiên; cùng seed (trong cùng một ngày) thì cho đúng cùng một bộ dữ liệu.
-          Mọi ngày (học kỳ, hợp đồng, hóa đơn, vi phạm) được tính từ ngày hôm nay, vì HopDong.con_giu_cho
-          của thực thể cũng tính theo ngày thật nên dữ liệu phải bám cùng một mốc.
+        - seed: hạt giống ngẫu nhiên; cùng seed (và cùng hom_nay) thì cho đúng cùng một bộ dữ liệu.
+        - hom_nay: ngày làm mốc cho học kỳ, hợp đồng, hóa đơn, vi phạm và cho HopDong.con_giu_cho(hom_nay)
+          (mặc định là ngày hiện tại; không cần đúng ngày chạy, miễn là cả bộ dữ liệu bám cùng một mốc).
         - dia_ly: danh sách tỉnh/xã thật (từ LuuTruDiaLy) để chọn địa chỉ; None thì dùng vài mã địa chỉ mẫu.
         - so_vong_bam: số vòng băm mật khẩu; giữ mặc định khi dùng thật, chỉ hạ thấp khi cần sinh hàng loạt để test cho nhanh.
     """
     if so_sinh_vien < 1:
         raise ValueError("Số sinh viên phải lớn hơn 0")
     rng = random.Random(seed)
-    hom_nay = date.today()  # cùng mốc với HopDong.con_giu_cho
+    hom_nay = hom_nay or date.today()
 
     # Gom địa chỉ thành các cặp (mã tỉnh, mã xã)
     dia_chi = [(t.ma, x.ma) for t in (dia_ly or []) for x in t.danh_sach_xa] or _DIA_CHI_DU_PHONG
@@ -413,6 +413,18 @@ def ghi_du_lieu(kho: KhoDuLieu) -> None:
         luu_tru.ghi(du_lieu)
 
 
+def _kiem_tra_tai_khoan_mau(kho: KhoDuLieu) -> list[str]:
+    """Chắc chắn các tài khoản đăng nhập thử in ra ở cuối thực sự dùng được, bằng chính TaiKhoan.kiem_tra()."""
+    loi = []
+    admin = kho.tai_khoan.get(TEN_ADMIN_MAU)
+    if admin is None or not admin.kiem_tra(MAT_KHAU_ADMIN_MAU):
+        loi.append(f"Tài khoản {TEN_ADMIN_MAU} không đăng nhập được bằng mật khẩu mẫu")
+    for tk in kho.tai_khoan.values():
+        if not tk.co_quyen_quan_tri and not tk.kiem_tra(MAT_KHAU_SINH_VIEN_MAU):
+            loi.append(f"Tài khoản {tk.ma} không đăng nhập được bằng mật khẩu mẫu")
+    return loi
+
+
 def _nap_dia_ly() -> list[Tinh] | None:
     """
     Lấy dữ liệu địa lý thật để sinh mã tỉnh/mã xã: ưu tiên file cục bộ, không có thì tải từ API
@@ -452,6 +464,7 @@ def chay(so_sinh_vien: int = 80, seed: int | None = None, cho_phep_ghi_de: bool 
         print("Cảnh báo: không có dữ liệu địa lý nên mã tỉnh/mã xã của sinh viên là mã mẫu, không khớp dữ liệu địa lý thật.")
     kho = sinh_du_lieu(so_sinh_vien, seed, dia_ly=dia_ly)
     loi = kiem_cheo_du_lieu(kho)
+    loi += _kiem_tra_tai_khoan_mau(kho)
     if loi:
         raise SystemExit("Dữ liệu sinh ra không qua được kiểm chéo:\n  " + "\n  ".join(loi[:20]))
     ghi_du_lieu(kho)

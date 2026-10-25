@@ -7,9 +7,8 @@
 # bộ nhớ (self._tai_khoan). Mọi thao tác sau đó (đăng nhập, tạo tài khoản, đổi mật khẩu) làm việc trên bản
 # trong bộ nhớ, và chỉ GHI xuống file khi có thay đổi; không đọc lại file.
 #
-# Lưu ý: KHÔNG dùng TaiKhoan.kiem_tra() để xác thực. Hàm đó so hai chuỗi băm có BẰNG NHAU, trong khi mật khẩu ở đây
-# được băm kèm "muối" ngẫu nhiên (cùng một mật khẩu cho ra mỗi lần một chuỗi khác), nên phải kiểm tra bằng
-# tien_ich/bam_mat_khau.kiem_tra_mat_khau. Đổi mật khẩu thì dùng TaiKhoan.doi_mat_khau() của thực thể.
+# Xác thực dùng TaiKhoan.kiem_tra(mat_khau) (bên trong gọi tiện ích tien_ich/bam_mat_khau); đổi mật khẩu dùng
+# TaiKhoan.doi_mat_khau(). Mật khẩu chỉ được băm ở đây trước khi lưu, không bao giờ lưu mật khẩu gốc.
 from functools import cache
 
 from giao_thuc.luu_tru import GiaoThucLuuTru
@@ -139,7 +138,7 @@ class PhienLamViec(GiaoThucPhienLamViec):
         if tk is None:
             kiem_tra_mat_khau(mat_khau, _ma_bam_gia())  # làm cho tốn thời gian như trường hợp có tài khoản
             raise ValueError(_LOI_SAI_THONG_TIN)
-        if not kiem_tra_mat_khau(mat_khau, tk.mat_khau_bam):
+        if not tk.kiem_tra(mat_khau):
             raise ValueError(_LOI_SAI_THONG_TIN)
         if not tk.con_hoat_dong:  # chỉ báo cho người đã nhập ĐÚNG mật khẩu
             raise ValueError("Tài khoản đã ngừng hoạt động")
@@ -170,7 +169,7 @@ class PhienLamViec(GiaoThucPhienLamViec):
                 raise ValueError("Tài khoản hiện tại không còn tồn tại")
             if mat_khau_cu is None:
                 raise ValueError("Cần nhập mật khẩu cũ")
-            if not kiem_tra_mat_khau(mat_khau_cu, hien_tai.mat_khau_bam):
+            if not hien_tai.kiem_tra(mat_khau_cu):
                 raise ValueError("Mật khẩu cũ không đúng")
             if mat_khau_cu == mat_khau_moi:
                 raise ValueError("Mật khẩu mới phải khác mật khẩu cũ")
