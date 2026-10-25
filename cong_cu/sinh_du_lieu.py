@@ -70,14 +70,15 @@ class _KeHoachPhong:
     phi_tien_nghi: float  # tổng giá tiện ích của phòng chia đều cho sức chứa, tức phần mỗi người chịu
     hoat_dong: bool = True
     sinh_vien: list[str] | None = None  # sinh viên đang ở (hợp đồng đã thanh toán)
-    so_cho_giu: int = 0  # số hợp đồng chưa thanh toán nhưng còn hạn giữ chỗ
+    hop_dong: list[HopDong] | None = None  # mọi hợp đồng của phòng này (kể cả đã kết thúc hay quá hạn)
 
     def __post_init__(self) -> None:
         self.sinh_vien = []
+        self.hop_dong = []
 
     def con_cho(self) -> bool:
-        """Còn chỗ khi (người đang ở + chỗ đang được giữ) chưa chạm sức chứa, đúng quy tắc của HopDong.con_giu_cho."""
-        return len(self.sinh_vien) + self.so_cho_giu < self.suc_chua  # type: ignore[arg-type]
+        """Còn chỗ khi số hợp đồng đang giữ chỗ chưa chạm sức chứa. Việc "đang giữ chỗ" do HopDong.con_giu_cho quyết định."""
+        return sum(1 for hd in self.hop_dong if hd.con_giu_cho) < self.suc_chua  # type: ignore[union-attr]
 
 
 # ---------------------------------------------------------------- học kỳ
@@ -228,7 +229,7 @@ def _xep_hop_dong(rng: random.Random, cac_sv: list[SinhVien], cac_phong: list[_K
       - "cu"     (~15%): chỉ có hợp đồng ĐÃ KẾT THÚC ở các học kỳ trước
       - "moi"    (~15%): chưa có hợp đồng nào
     Sinh viên đã lưu trữ (tốt nghiệp) luôn thuộc kịch bản "cu".
-    Mỗi phòng chỉ được xếp thêm khi (người đang ở + hợp đồng đang giữ chỗ) chưa chạm sức chứa.
+    Mỗi phòng chỉ được xếp thêm khi số hợp đồng đang giữ chỗ (HopDong.con_giu_cho) chưa chạm sức chứa.
     """
     cac_hk_truoc, hk_hien_tai, hk_ke_tiep = cac_hk[:2], cac_hk[2], cac_hk[3]
     dv_hoat_dong = [dv for dv in cac_dv if dv.con_hoat_dong]
@@ -237,6 +238,7 @@ def _xep_hop_dong(rng: random.Random, cac_sv: list[SinhVien], cac_phong: list[_K
     def tao(sv: SinhVien, phong: _KeHoachPhong, hk: HocKy, trang_thai: TrangThaiHopDong, dang_cho: bool = False) -> HopDong:
         hd = _tao_hop_dong(rng, cac_hd, sv, phong, hk, dv_hoat_dong, trang_thai, hom_nay, dang_cho)
         cac_hd.append(hd)
+        phong.hop_dong.append(hd)  # type: ignore[union-attr]  # để con_cho() đếm được bằng HopDong.con_giu_cho
         return hd
 
     for sv in cac_sv:
@@ -268,7 +270,6 @@ def _xep_hop_dong(rng: random.Random, cac_sv: list[SinhVien], cac_phong: list[_K
             phong = _chon_phong_con_cho(rng, cac_phong)
             if phong is not None:
                 tao(sv, phong, hk_ke_tiep, TrangThaiHopDong.CHUA_THANH_TOAN, dang_cho=True)
-                phong.so_cho_giu += 1  # hợp đồng này đang giữ một chỗ của phòng
         elif kich_ban == "het_han":
             # Quá hạn nên không giữ chỗ: phòng nào cũng được, không tính vào sức chứa
             tao(sv, rng.choice(cac_phong), cac_hk_truoc[-1], TrangThaiHopDong.CHUA_THANH_TOAN)
@@ -340,22 +341,23 @@ def _thanh_dict(danh_sach: list) -> dict:
     return {tt.ma: tt for tt in danh_sach}
 
 
-def sinh_du_lieu(so_sinh_vien: int = 80, seed: int | None = None, hom_nay: date | None = None,
-                 dia_ly: list[Tinh] | None = None, so_vong_bam: int = SO_VONG_MAC_DINH) -> KhoDuLieu:
+def sinh_du_lieu(so_sinh_vien: int = 80, seed: int | None = None, dia_ly: list[Tinh] | None = None,
+                 so_vong_bam: int = SO_VONG_MAC_DINH) -> KhoDuLieu:
     """
     Sinh một bộ dữ liệu mẫu hoàn chỉnh trong bộ nhớ (chưa ghi file, xem ghi_du_lieu).
 
     Tham số:
         - so_sinh_vien: số sinh viên cần sinh (tối thiểu 1).
-        - seed: hạt giống ngẫu nhiên; cùng seed (và cùng hom_nay) thì cho đúng cùng một bộ dữ liệu.
-        - hom_nay: ngày làm mốc cho học kỳ, hóa đơn, vi phạm (mặc định là ngày hiện tại).
+        - seed: hạt giống ngẫu nhiên; cùng seed (trong cùng một ngày) thì cho đúng cùng một bộ dữ liệu.
+          Mọi ngày (học kỳ, hợp đồng, hóa đơn, vi phạm) được tính từ ngày hôm nay, vì HopDong.con_giu_cho
+          của thực thể cũng tính theo ngày thật nên dữ liệu phải bám cùng một mốc.
         - dia_ly: danh sách tỉnh/xã thật (từ LuuTruDiaLy) để chọn địa chỉ; None thì dùng vài mã địa chỉ mẫu.
         - so_vong_bam: số vòng băm mật khẩu; giữ mặc định khi dùng thật, chỉ hạ thấp khi cần sinh hàng loạt để test cho nhanh.
     """
     if so_sinh_vien < 1:
         raise ValueError("Số sinh viên phải lớn hơn 0")
     rng = random.Random(seed)
-    hom_nay = hom_nay or date.today()
+    hom_nay = date.today()  # cùng mốc với HopDong.con_giu_cho
 
     # Gom địa chỉ thành các cặp (mã tỉnh, mã xã)
     dia_chi = [(t.ma, x.ma) for t in (dia_ly or []) for x in t.danh_sach_xa] or _DIA_CHI_DU_PHONG
