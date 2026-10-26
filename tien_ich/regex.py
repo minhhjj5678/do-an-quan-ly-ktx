@@ -4,7 +4,7 @@
 from datetime import date
 from typing import Callable
 import re
-
+from tien_ich.tao_ma import SO_CHU_SO, TIEN_TO
 
 def ktra_so(so: float, dieu_kien: Callable[[float], bool], thong_bao_loi: str | None = None) -> bool:
     """
@@ -99,15 +99,27 @@ def la_sdt(x: str) -> bool:
 def la_cccd(x: str) -> bool:
     return bool(re.match(r"^0\d{11}$", x))
 
-# TODO: dùng regex để kiểm tra mã thực thể
-def la_ma_sinh_vien(x: str) -> bool: return True
-def la_ma_phong(x: str) -> bool: return True
-def la_ma_toa_nha(x: str) -> bool: return True
-def la_ma_hoa_don_thang(x: str) -> bool: return True
-def la_ma_dich_vu_them(x: str) -> bool: return True
-def la_ma_hop_dong(x: str) -> bool: return True
-def la_ma_vi_pham(x: str) -> bool: return True
-def la_ma_hoc_ky(x: str) -> bool: return True
+# ---- Kiểm tra mã thực thể ----
+# Mã có dạng <TIỀN TỐ><4 chữ số> (ví dụ SV0001), khớp với bộ sinh mã trong tao_ma.py.
+# Tiền tố và số chữ số lấy từ tao_ma.TIEN_TO / SO_CHU_SO nên không thể lệch với nơi sinh mã.
+
+_MAU_MA = {
+    loai: re.compile(rf"{re.escape(tien_to)}\d{{{SO_CHU_SO}}}")
+    for loai, tien_to in TIEN_TO.items()
+}
+ 
+def _la_ma(loai: str, x: str) -> bool:
+    """True nếu x là chuỗi và khớp TOÀN BỘ mẫu mã của loại thực thể `loai`."""
+    return isinstance(x, str) and _MAU_MA[loai].fullmatch(x) is not None
+ 
+def la_ma_sinh_vien(x: str) -> bool: return _la_ma("sinh_vien", x)
+def la_ma_phong(x: str) -> bool: return _la_ma("phong", x)
+def la_ma_toa_nha(x: str) -> bool: return _la_ma("toa_nha", x)
+def la_ma_hoa_don_thang(x: str) -> bool: return _la_ma("hoa_don_thang", x)
+def la_ma_dich_vu_them(x: str) -> bool: return _la_ma("dich_vu_them", x)
+def la_ma_hop_dong(x: str) -> bool: return _la_ma("hop_dong", x)
+def la_ma_vi_pham(x: str) -> bool: return _la_ma("vi_pham", x)
+def la_ma_hoc_ky(x: str) -> bool: return _la_ma("hoc_ky", x)
 
 # ---- Tài khoản ----
 # Quy ước do Phần C tự đặt (đề không quy định), cần đổi thì sửa tại đây là đủ vì cả giao diện lẫn nghiệp vụ đều gọi hai hàm này.
