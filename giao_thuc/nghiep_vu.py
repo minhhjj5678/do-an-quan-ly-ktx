@@ -15,6 +15,9 @@ P = ParamSpec("P")
 
 # Phần B
 class GiaoThucDieuPhoi(ABC):
+    """
+    Quy ước: với TaiKhoan, tầng giao diện không gọi tao_va_them, cap_nhat, luu_tru, tai_kich_hoat, xoa trực tiếp mà chỉ đi qua GiaoThucPhienLamViec (nơi kiểm tra quyền và các luật tài khoản).
+    """
     @abstractmethod
     def nap_du_lieu_file(self) -> None:
         """
@@ -57,19 +60,27 @@ class GiaoThucDieuPhoi(ABC):
         """
         Xóa thực thể khỏi hệ thống.
         Hạn chế dùng đối với thực thể lưu trữ được, thay bằng luu_tru().
+        Nếu ep_xoa = True: Xóa thực thể và **XÓA LUÔN** các thực thể quan hệ yếu phụ thuộc vào thực thể đã xóa.
 
-        - Nếu thực thể lưu trữ được (SinhVien, Phong, Tòa Nhà...) và đang có ràng buộc trong HopDong: Ném lỗi ValueError.
-        - Nếu ep_xoa = True: Xóa thực thể và **XÓA LUÔN** các HopDong liên quan.
+        - Ném lỗi ValueError nếu:
+            - thực thể lưu trữ được (SinhVien, Phong, Tòa Nhà...) và đang còn hoạt động.
+            - thực thể còn ràng buộc HopDong, ViPham, HoaDonThang... và ep_xoa = False.
         """
         raise NotImplementedError
 
     @abstractmethod
-    def lay_theo_ma(self, loai_thuc_the: type[T], ma: str, lay_luu_tru: bool = False) -> T: raise NotImplementedError
+    def lay_theo_ma(self, loai_thuc_the: type[T], ma: str, lay_luu_tru: bool = False) -> T:
+        """
+        Lấy thực thể theo mã.\n
+        Ném lỗi nếu không tìm thấy thực thể hoặc thực thể đã lưu trữ và lay_luu_tru = False.
+        """
+        raise NotImplementedError
 
     @abstractmethod
     def loc_theo_dieu_kien(self, loai_thuc_the: type[T], dieu_kien: Callable[[T], bool], lay_luu_tru: bool = False) -> dict[str, T]:
         """
         Lọc danh sách thực thể dựa trên một hàm điều kiện.
+        Nếu lay_luu_tru = True thì lọc cả các thực thể đã lưu trữ, ngược lại chỉ lọc các thực thể còn hoạt động.
         """
         raise NotImplementedError
 
@@ -101,8 +112,9 @@ class GiaoThucDieuPhoi(ABC):
     @abstractmethod
     def thanh_toan_hop_dong(self, hop_dong: HopDong) -> None:
         """
-        Thay đổi trạng thái hợp đồng thành đã thanh toán.\n
+        Thay đổi trạng thái hợp đồng thành đã thanh toán.
         Cập nhật phòng của sinh viên, danh sách sinh viên của phòng.
+        Ném lỗi nếu hợp đồng không ở trạng thái thanh toán hoặc không còn giữ chỗ trong phòng.
         """
         raise NotImplementedError
 
@@ -110,7 +122,7 @@ class GiaoThucDieuPhoi(ABC):
     def ket_thuc_hop_dong(self, hop_dong: HopDong) -> None:
         """
         Thay đổi trạng thái hợp đồng thành kết thúc.\n
-        Xóa phòng của sinh viên, xóa sinh viên khỏi danh sách sinh viên của phòng.
+        Xóa phòng của sinh viên, xóa sinh viên khỏi danh sách sinh viên của phòng nếu hợp đồng đã thanh toán.
         """
         raise NotImplementedError
 
@@ -118,6 +130,7 @@ class GiaoThucDieuPhoi(ABC):
     def thanh_toan_hoa_don_thang(self, hoa_don_thang: HoaDonThang) -> None:
         """
         Cập nhật trạng thái thanh toán của hóa đơn tháng thành đã thanh toán.
+        Ném lỗi nếu hóa đơn tháng không ở trạng thái thanh toán.
         """
         raise NotImplementedError
 
@@ -125,6 +138,7 @@ class GiaoThucDieuPhoi(ABC):
     def xu_ly_vi_pham(self, vi_pham: ViPham) -> None:
         """
         Cập nhật trạng thái xử lý vi phạm thành đã xử lý.
+        Ném lỗi nếu vi phạm không ở trạng thái chưa xử lý.
         """
         raise NotImplementedError
 
@@ -193,6 +207,10 @@ class GiaoThucDieuPhoi(ABC):
 
 # Phần C
 class GiaoThucPhienLamViec(ABC):
+    """
+    Giao thức phiên làm việc của hệ thống.
+    Yêu cầu nhận vào một đối tượng GiaoThucDieuPhoi để thực hiện các thao tác nghiệp vụ liên quan đến tài khoản.
+    """
     @property
     @abstractmethod
     def tai_khoan_hien_tai(self) -> TaiKhoan | None:
@@ -205,6 +223,7 @@ class GiaoThucPhienLamViec(ABC):
     def tao_tai_khoan(self, tai_khoan: str, mat_khau: str, loai_tai_khoan: LoaiTaiKhoan, ma_chu_the: str | None) -> None:
         """
         Tạo tài khoản mới.
+        Chỉ quản trị viên đang đăng nhập mới được tạo tài khoản. Khi hệ thống chưa có tài khoản nào hoạt động, cho phép tạo tài khoản quản trị viên đầu tiên mà không cần đăng nhập.
 
         Thuộc tính:
             - tai_khoan: tên đăng nhập.
@@ -218,7 +237,7 @@ class GiaoThucPhienLamViec(ABC):
     def dang_nhap(self, tai_khoan: str, mat_khau: str) -> None:
         """
         Đăng nhập tài khoản.\n
-        Ném lỗi nếu mật khẩu không hợp lệ hoặc đã đăng nhập.
+        Ném lỗi nếu mật khẩu không hợp lệ, tài khoản đã đăng nhập hoặc không tồn tại hoặc đã ngừng hoạt động.
         """
         raise NotImplementedError
 
@@ -237,5 +256,29 @@ class GiaoThucPhienLamViec(ABC):
         - Nếu tai_khoan = None: Đổi mật khẩu cho tài khoản đang đăng nhập hiện tại. BẮT BUỘC có mat_khau_cu.
         - Nếu có tai_khoan: Chức năng dành cho quản trị viên để reset mật khẩu người khác (Không cần mat_khau_cu).
         Ném lỗi nếu: Chưa đăng nhập, không có quyền quản trị, hoặc mật khẩu cũ không đúng.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def ngung_tai_khoan(self, tai_khoan: str) -> None:
+        """
+        Ngừng hoạt động của tài khoản.
+        Ném lỗi nếu: chưa đăng nhập, không có quyền, tài khoản không tồn tại hoặc đã ngừng hoạt động, là chính tài khoản đang đăng nhập, hoặc là quản trị viên hoạt động cuối cùng.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def kich_hoat_lai_tai_khoan(self, tai_khoan: str) -> None:
+        """
+        Kích hoạt lại tài khoản đã ngừng hoạt động.
+        Ném lỗi nếu: chưa đăng nhập, không có quyền, tài khoản không tồn tại, hoặc tài khoản đang hoạt động.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def xoa_tai_khoan(self, tai_khoan: str) -> None:
+        """
+        Xóa tài khoản khỏi hệ thống. Hạn chế dùng và chỉ xóa tài khoản đã ngừng hoạt động.\n
+        Ném lỗi nếu: chưa đăng nhập, không có quyền, tài khoản không tồn tại hoặc còn hoạt động, hoặc là chính tài khoản đang đăng nhập.
         """
         raise NotImplementedError
