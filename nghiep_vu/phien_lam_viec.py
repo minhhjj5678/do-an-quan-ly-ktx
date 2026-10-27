@@ -1,18 +1,18 @@
 # Phần C
-# Phiên làm việc và quản lý tài khoản: đăng nhập, đăng xuất, tạo tài khoản, đổi mật khẩu.
-# Triển khai GiaoThucPhienLamViec; nhận tầng lưu trữ tài khoản qua hàm khởi tạo (tiêm phụ thuộc),
-# nên file này không biết dữ liệu nằm ở đâu, chỉ gọi doc/ghi qua GiaoThucLuuTru.
+# Phiên làm việc và quản lý tài khoản: đăng nhập, đăng xuất, tạo tài khoản, đổi mật khẩu,
+# ngừng / kích hoạt lại / xóa tài khoản. Triển khai GiaoThucPhienLamViec.
 #
-# Cách làm việc với dữ liệu: danh sách tài khoản chỉ được ĐỌC TỪ FILE MỘT LẦN lúc khởi tạo rồi giữ trong
-# bộ nhớ (self._tai_khoan). Mọi thao tác sau đó (đăng nhập, tạo tài khoản, đổi mật khẩu) làm việc trên bản
-# trong bộ nhớ, và chỉ GHI xuống file khi có thay đổi; không đọc lại file.
+# Theo quy ước của hệ thống, dữ liệu tài khoản do TẦNG ĐIỀU PHỐI nắm (nạp lên bộ nhớ một lần lúc khởi động và ghi
+# xuống file mỗi khi thay đổi). Vì vậy lớp này KHÔNG đọc hay ghi file nào cả: nó nhận một GiaoThucDieuPhoi qua hàm
+# khởi tạo (tiêm phụ thuộc), hỏi danh sách tài khoản và nhờ điều phối thực hiện mọi thay đổi, còn bản thân chỉ lo
+# phần luật của tài khoản (quyền quản trị, không tự ngừng chính mình, không xóa quản trị viên cuối cùng...).
+# Giao diện không được gọi điều phối trực tiếp cho TaiKhoan mà phải đi qua lớp này.
 #
-# Xác thực dùng TaiKhoan.kiem_tra(mat_khau) (bên trong gọi tiện ích tien_ich/bam_mat_khau); đổi mật khẩu dùng
-# TaiKhoan.doi_mat_khau(). Mật khẩu chỉ được băm ở đây trước khi lưu, không bao giờ lưu mật khẩu gốc.
+# Mật khẩu: chỉ băm ở đây trước khi lưu (tien_ich/bam_mat_khau), không bao giờ lưu mật khẩu gốc.
+# Xác thực dùng TaiKhoan.kiem_tra(mat_khau); đổi mật khẩu dùng TaiKhoan.doi_mat_khau().
 from functools import cache
 
-from giao_thuc.luu_tru import GiaoThucLuuTru
-from giao_thuc.nghiep_vu import GiaoThucPhienLamViec
+from giao_thuc.nghiep_vu import GiaoThucDieuPhoi, GiaoThucPhienLamViec
 from thuc_the.tai_khoan import LoaiTaiKhoan, TaiKhoan
 from tien_ich.bam_mat_khau import bam_mat_khau, kiem_tra_mat_khau
 from tien_ich.regex import la_ma_sinh_vien, la_mat_khau, la_ten_dang_nhap
@@ -31,53 +31,39 @@ def _ma_bam_gia() -> str:
 
 
 class PhienLamViec(GiaoThucPhienLamViec):
-    def __init__(self, luu_tru_tai_khoan: GiaoThucLuuTru[TaiKhoan]) -> None:
-        self._luu_tru = luu_tru_tai_khoan
-        # Đọc file đúng MỘT lần ở đây; dict {tên đăng nhập: TaiKhoan}
-        self._tai_khoan: dict[str, TaiKhoan] = self._doc_luc_khoi_dong()
+    def __init__(self, dieu_phoi: GiaoThucDieuPhoi) -> None:
+        self._dieu_phoi = dieu_phoi
         self._tai_khoan_hien_tai: TaiKhoan | None = None  # None = chưa ai đăng nhập
 
     # ---- Hàm hỗ trợ nội bộ ----
-    def _doc_luc_khoi_dong(self) -> dict[str, TaiKhoan]:
-        """
-        Đọc danh sách tài khoản lúc khởi động.
-          - File chính đọc được: dùng luôn.
-          - File chính chưa có (lần chạy đầu) mà cũng không có sao lưu: danh sách rỗng (sẽ tạo quản trị viên đầu tiên).
-          - File chính hỏng / bị sửa ngoài app / bị xóa: đọc từ file sao lưu rồi ghi ngược lại để khôi phục file chính.
-          - File chính hỏng mà không có sao lưu, hoặc sao lưu cũng hỏng: ném ValueError để giao diện báo lỗi,
-            tuyệt đối không khởi động với danh sách rỗng vì sẽ mất hết tài khoản.
-        Danh sách tài khoản do lớp này tự quản lý nên tự xử lý luôn, không nhờ tầng điều phối.
-        """
-        try:
-            return dict(self._luu_tru.doc())
-        except (FileNotFoundError, ValueError) as loi_chinh:
-            try:
-                du_lieu = dict(self._luu_tru.doc_sao_luu())
-            except FileNotFoundError:
-                if isinstance(loi_chinh, FileNotFoundError):
-                    return {}  # chưa có file nào: lần chạy đầu tiên
-                raise loi_chinh  # file chính hỏng mà không có sao lưu để khôi phục
-            self._luu_tru.ghi(du_lieu)  # khôi phục file chính từ bản sao lưu
-            return du_lieu
+    def _tat_ca(self) -> dict[str, TaiKhoan]:
+        """Mọi tài khoản, kể cả đã ngừng hoạt động (lay_luu_tru=True). Lấy từ điều phối mỗi lần để luôn khớp dữ liệu hiện có."""
+        return self._dieu_phoi.lay_tat_ca(TaiKhoan, lay_luu_tru=True)
 
-    def _luu(self, tai_khoan_moi: dict[str, TaiKhoan]) -> None:
-        """
-        Ghi bản danh sách mới xuống file, GHI THÀNH CÔNG rồi mới thay bản trong bộ nhớ.
-        Nhờ vậy nếu ghi file lỗi thì bộ nhớ vẫn khớp với file, không bị lệch.
-        """
-        self._luu_tru.ghi(tai_khoan_moi)
-        self._tai_khoan = tai_khoan_moi
+    def _yeu_cau_quan_tri(self, thong_bao_khong_co_quyen: str) -> TaiKhoan:
+        """Trả về tài khoản đang đăng nhập nếu là quản trị viên; ngược lại ném ValueError."""
+        if self._tai_khoan_hien_tai is None:
+            raise ValueError("Chưa đăng nhập")
+        if not self._tai_khoan_hien_tai.co_quyen_quan_tri:
+            raise ValueError(thong_bao_khong_co_quyen)
+        return self._tai_khoan_hien_tai
 
-    def _doi_mat_khau_bam(self, tai_khoan: TaiKhoan, mat_khau_bam_moi: str) -> None:
+    def _them_tai_khoan(self, ten_dang_nhap: str, mat_khau_bam: str, loai: LoaiTaiKhoan, ma_chu_the: str | None) -> TaiKhoan:
         """
-        Đổi mật khẩu bằng TaiKhoan.doi_mat_khau() của thực thể (sửa tại chỗ, nên người đang đăng nhập
-        cũng thấy ngay vì dùng chung một đối tượng), rồi ghi xuống file.
-        Ghi file lỗi thì trả lại mật khẩu cũ để bộ nhớ vẫn khớp với file.
+        Nhờ điều phối tạo và thêm tài khoản. Đây là CHỖ DUY NHẤT phụ thuộc vào cách GiaoThucDieuPhoi.tao_va_them
+        xử lý TaiKhoan (tên đăng nhập chính là mã của tài khoản, nên truyền cùng các tham số còn lại).
+        """
+        return self._dieu_phoi.tao_va_them(TaiKhoan, ten_dang_nhap, mat_khau_bam, loai, ma_chu_the)
+
+    def _dat_mat_khau_bam(self, tai_khoan: TaiKhoan, mat_khau_bam_moi: str) -> None:
+        """
+        Đổi mật khẩu bằng TaiKhoan.doi_mat_khau() (sửa tại chỗ) rồi nhờ điều phối cập nhật.
+        Điều phối báo lỗi thì trả lại mật khẩu cũ để dữ liệu trong bộ nhớ không bị lệch.
         """
         mat_khau_bam_cu = tai_khoan.mat_khau_bam
         tai_khoan.doi_mat_khau(mat_khau_bam_moi)
         try:
-            self._luu_tru.ghi(self._tai_khoan)
+            self._dieu_phoi.cap_nhat(TaiKhoan, tai_khoan)
         except Exception:
             tai_khoan.doi_mat_khau(mat_khau_bam_cu)
             raise
@@ -93,8 +79,8 @@ class PhienLamViec(GiaoThucPhienLamViec):
 
         Quy tắc:
           - Chỉ quản trị viên đang đăng nhập mới được tạo tài khoản.
-          - Ngoại lệ: khi hệ thống CHƯA có tài khoản nào thì cho tạo, nhưng bắt buộc là quản trị viên
-            (nếu không sẽ không có ai để đăng nhập lần đầu).
+          - Ngoại lệ: khi hệ thống CHƯA có tài khoản nào đang hoạt động thì cho tạo mà không cần đăng nhập,
+            nhưng bắt buộc là quản trị viên (nếu không sẽ không có ai để đăng nhập).
           - Tài khoản sinh viên phải có mã sinh viên hợp lệ, và mỗi sinh viên chỉ có một tài khoản.
         Ném ValueError nếu vi phạm.
         """
@@ -105,36 +91,34 @@ class PhienLamViec(GiaoThucPhienLamViec):
         if not isinstance(loai_tai_khoan, LoaiTaiKhoan):
             raise ValueError("Loại tài khoản không hợp lệ")
 
+        tat_ca = self._tat_ca()
+
         # Kiểm tra quyền
-        if self._tai_khoan:
-            if self._tai_khoan_hien_tai is None:
-                raise ValueError("Cần đăng nhập bằng tài khoản quản trị để tạo tài khoản")
-            if not self._tai_khoan_hien_tai.co_quyen_quan_tri:
-                raise ValueError("Chỉ quản trị viên mới được tạo tài khoản")
+        if any(tk.con_hoat_dong for tk in tat_ca.values()):
+            self._yeu_cau_quan_tri("Chỉ quản trị viên mới được tạo tài khoản")
         elif loai_tai_khoan != LoaiTaiKhoan.QUAN_TRI_VIEN:
             raise ValueError("Tài khoản đầu tiên của hệ thống phải là quản trị viên")
 
-        if tai_khoan in self._tai_khoan:
+        if tai_khoan in tat_ca:  # kể cả tài khoản đã ngừng: tên vẫn thuộc về nó
             raise ValueError("Tên đăng nhập đã tồn tại")
 
         # Mã chủ thể: sinh viên thì bắt buộc, quản trị viên thì không có
         if loai_tai_khoan == LoaiTaiKhoan.SINH_VIEN:
             if ma_chu_the is None or not la_ma_sinh_vien(ma_chu_the):
                 raise ValueError("Tài khoản sinh viên cần có mã sinh viên hợp lệ")
-            if any(tk.ma_chu_the == ma_chu_the for tk in self._tai_khoan.values()):
+            if any(tk.ma_chu_the == ma_chu_the for tk in tat_ca.values()):
                 raise ValueError("Sinh viên này đã có tài khoản")
         else:
             ma_chu_the = None
 
-        moi = TaiKhoan(tai_khoan, bam_mat_khau(mat_khau), loai_tai_khoan, ma_chu_the)
-        self._luu({**self._tai_khoan, tai_khoan: moi})
+        self._them_tai_khoan(tai_khoan, bam_mat_khau(mat_khau), loai_tai_khoan, ma_chu_the)
 
     def dang_nhap(self, tai_khoan: str, mat_khau: str) -> None:
         """Đăng nhập. Ném ValueError nếu đã đăng nhập, sai thông tin, hoặc tài khoản đã ngừng hoạt động."""
         if self._tai_khoan_hien_tai is not None:
             raise ValueError("Đã đăng nhập, hãy đăng xuất trước")
 
-        tk = self._tai_khoan.get(tai_khoan)
+        tk = self._tat_ca().get(tai_khoan)
         if tk is None:
             kiem_tra_mat_khau(mat_khau, _ma_bam_gia())  # làm cho tốn thời gian như trường hợp có tài khoản
             raise ValueError(_LOI_SAI_THONG_TIN)
@@ -163,8 +147,9 @@ class PhienLamViec(GiaoThucPhienLamViec):
         if not la_mat_khau(mat_khau_moi):
             raise ValueError(_LOI_MAT_KHAU)
 
+        tat_ca = self._tat_ca()
         if tai_khoan is None:
-            hien_tai = self._tai_khoan.get(self._tai_khoan_hien_tai.ma)
+            hien_tai = tat_ca.get(self._tai_khoan_hien_tai.ma)
             if hien_tai is None:
                 raise ValueError("Tài khoản hiện tại không còn tồn tại")
             if mat_khau_cu is None:
@@ -173,12 +158,61 @@ class PhienLamViec(GiaoThucPhienLamViec):
                 raise ValueError("Mật khẩu cũ không đúng")
             if mat_khau_cu == mat_khau_moi:
                 raise ValueError("Mật khẩu mới phải khác mật khẩu cũ")
-            self._doi_mat_khau_bam(hien_tai, bam_mat_khau(mat_khau_moi))
+            self._dat_mat_khau_bam(hien_tai, bam_mat_khau(mat_khau_moi))
         else:
             # Quản trị viên đặt lại mật khẩu cho tài khoản khác
-            if not self._tai_khoan_hien_tai.co_quyen_quan_tri:
-                raise ValueError("Chỉ quản trị viên mới được đặt lại mật khẩu của tài khoản khác")
-            dich = self._tai_khoan.get(tai_khoan)
+            self._yeu_cau_quan_tri("Chỉ quản trị viên mới được đặt lại mật khẩu của tài khoản khác")
+            dich = tat_ca.get(tai_khoan)
             if dich is None:
                 raise ValueError("Tài khoản không tồn tại")
-            self._doi_mat_khau_bam(dich, bam_mat_khau(mat_khau_moi))
+            self._dat_mat_khau_bam(dich, bam_mat_khau(mat_khau_moi))
+
+    def ngung_tai_khoan(self, tai_khoan: str) -> None:
+        """
+        Ngừng hoạt động của tài khoản (không xóa, có thể kích hoạt lại sau).
+        Ném ValueError nếu: chưa đăng nhập, không có quyền, tài khoản không tồn tại hoặc đã ngừng hoạt động,
+        là chính tài khoản đang đăng nhập, hoặc là quản trị viên hoạt động cuối cùng.
+        """
+        hien_tai = self._yeu_cau_quan_tri("Chỉ quản trị viên mới được ngừng tài khoản")
+        tat_ca = self._tat_ca()
+        dich = tat_ca.get(tai_khoan)
+        if dich is None:
+            raise ValueError("Tài khoản không tồn tại")
+        if not dich.con_hoat_dong:
+            raise ValueError("Tài khoản đã ngừng hoạt động")
+        if dich.ma == hien_tai.ma:
+            raise ValueError("Không thể ngừng chính tài khoản đang đăng nhập")
+        # Quản trị viên cuối cùng: ngoài tài khoản này không còn quản trị viên nào đang hoạt động
+        if dich.co_quyen_quan_tri and not any(
+                tk.co_quyen_quan_tri and tk.con_hoat_dong and tk.ma != dich.ma for tk in tat_ca.values()):
+            raise ValueError("Không thể ngừng quản trị viên hoạt động cuối cùng")
+        self._dieu_phoi.luu_tru(dich)
+
+    def kich_hoat_lai_tai_khoan(self, tai_khoan: str) -> None:
+        """
+        Kích hoạt lại tài khoản đã ngừng hoạt động.
+        Ném ValueError nếu: chưa đăng nhập, không có quyền, tài khoản không tồn tại, hoặc tài khoản đang hoạt động.
+        """
+        self._yeu_cau_quan_tri("Chỉ quản trị viên mới được kích hoạt lại tài khoản")
+        dich = self._tat_ca().get(tai_khoan)
+        if dich is None:
+            raise ValueError("Tài khoản không tồn tại")
+        if dich.con_hoat_dong:
+            raise ValueError("Tài khoản đang hoạt động")
+        self._dieu_phoi.tai_kich_hoat(dich)
+
+    def xoa_tai_khoan(self, tai_khoan: str) -> None:
+        """
+        Xóa hẳn tài khoản khỏi hệ thống. Hạn chế dùng: chỉ xóa được tài khoản đã ngừng hoạt động.
+        Ném ValueError nếu: chưa đăng nhập, không có quyền, tài khoản không tồn tại hoặc còn hoạt động,
+        hoặc là chính tài khoản đang đăng nhập.
+        """
+        hien_tai = self._yeu_cau_quan_tri("Chỉ quản trị viên mới được xóa tài khoản")
+        dich = self._tat_ca().get(tai_khoan)
+        if dich is None:
+            raise ValueError("Tài khoản không tồn tại")
+        if dich.ma == hien_tai.ma:  # kiểm tra trước để người dùng nhận thông báo đúng (tài khoản này cũng đang hoạt động)
+            raise ValueError("Không thể xóa chính tài khoản đang đăng nhập")
+        if dich.con_hoat_dong:
+            raise ValueError("Chỉ xóa được tài khoản đã ngừng hoạt động")
+        self._dieu_phoi.xoa(TaiKhoan, dich)
