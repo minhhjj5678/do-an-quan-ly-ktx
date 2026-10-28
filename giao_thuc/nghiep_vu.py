@@ -47,6 +47,15 @@ class GiaoThucDieuPhoi(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def them(self, thuc_the: ThucTheGoc) -> None:
+        """
+        Thêm một thực thể đã được khởi tạo hoàn chỉnh vào hệ thống.
+        Dùng cho các thực thể có mã nhập từ người dùng không cần tự động sinh mã (hiện tại chỉ có TaiKhoan).
+        Ném lỗi nếu mã thực thể đã tồn tại hoặc vi phạm dữ liệu chéo.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     def tao_va_them(self, loai_thuc_the: Callable[Concatenate[str, P], T], /, *args: P.args, **kwargs: P.kwargs) -> T:
         """
         Tạo và thêm thực thể vào hệ thống.
