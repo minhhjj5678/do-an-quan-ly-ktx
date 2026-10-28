@@ -6,6 +6,7 @@
 # xuống file mỗi khi thay đổi). Vì vậy lớp này KHÔNG đọc hay ghi file nào cả: nó nhận một GiaoThucDieuPhoi qua hàm
 # khởi tạo (tiêm phụ thuộc), hỏi danh sách tài khoản và nhờ điều phối thực hiện mọi thay đổi, còn bản thân chỉ lo
 # phần luật của tài khoản (quyền quản trị, không tự ngừng chính mình, không xóa quản trị viên cuối cùng...).
+# Thêm tài khoản dùng them() của điều phối (mã tài khoản là tên đăng nhập người dùng nhập, không sinh tự động).
 # Giao diện không được gọi điều phối trực tiếp cho TaiKhoan mà phải đi qua lớp này.
 #
 # Mật khẩu: chỉ băm ở đây trước khi lưu (tien_ich/bam_mat_khau), không bao giờ lưu mật khẩu gốc.
@@ -48,12 +49,13 @@ class PhienLamViec(GiaoThucPhienLamViec):
             raise ValueError(thong_bao_khong_co_quyen)
         return self._tai_khoan_hien_tai
 
-    def _them_tai_khoan(self, ten_dang_nhap: str, mat_khau_bam: str, loai: LoaiTaiKhoan, ma_chu_the: str | None) -> TaiKhoan:
+    def _them_tai_khoan(self, tai_khoan: TaiKhoan) -> None:
         """
-        Nhờ điều phối tạo và thêm tài khoản. Đây là CHỖ DUY NHẤT phụ thuộc vào cách GiaoThucDieuPhoi.tao_va_them
-        xử lý TaiKhoan (tên đăng nhập chính là mã của tài khoản, nên truyền cùng các tham số còn lại).
+        Nhờ điều phối thêm một TaiKhoan đã dựng sẵn.
+        Dùng them() chứ KHÔNG dùng tao_va_them(): tao_va_them chỉ dành cho thực thể có mã sinh tự động,
+        còn mã của tài khoản chính là tên đăng nhập do người dùng nhập.
         """
-        return self._dieu_phoi.tao_va_them(TaiKhoan, ten_dang_nhap, mat_khau_bam, loai, ma_chu_the)
+        self._dieu_phoi.them(TaiKhoan, tai_khoan)
 
     def _dat_mat_khau_bam(self, tai_khoan: TaiKhoan, mat_khau_bam_moi: str) -> None:
         """
@@ -111,7 +113,7 @@ class PhienLamViec(GiaoThucPhienLamViec):
         else:
             ma_chu_the = None
 
-        self._them_tai_khoan(tai_khoan, bam_mat_khau(mat_khau), loai_tai_khoan, ma_chu_the)
+        self._them_tai_khoan(TaiKhoan(tai_khoan, bam_mat_khau(mat_khau), loai_tai_khoan, ma_chu_the))
 
     def dang_nhap(self, tai_khoan: str, mat_khau: str) -> None:
         """Đăng nhập. Ném ValueError nếu đã đăng nhập, sai thông tin, hoặc tài khoản đã ngừng hoạt động."""
