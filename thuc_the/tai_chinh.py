@@ -1,13 +1,11 @@
-from abc import ABC, abstractmethod
 from datetime import date
 from enum import Enum
-
 from dataclasses import dataclass
+import calendar
 
 from thuc_the._kiem_tra_ma import ktra_ma_tham_chieu_hop_le
-from thuc_the.hoc_vu import ThangNam
-from thuc_the.thuc_the_goc import ThucTheCoTen, ThucTheGoc, ThucTheLuuTruDuoc
-from tien_ich.regex import ktra_chuoi, ktra_ngay, ktra_so, la_ma_dich_vu_them, la_ma_hoa_don_thang, la_ma_hop_dong, la_so_duong
+from thuc_the.thuc_the_goc import ThucTheGoc
+from tien_ich.regex import ktra_chuoi, ktra_ngay, ktra_so, la_ma_hoa_don_thang, la_ma_hop_dong, la_so_duong
 
 
 class TrangThaiHoaDon(Enum):
@@ -19,36 +17,45 @@ class TrangThaiHopDong(Enum):
     DA_THANH_TOAN = "đã thanh toán"
     KET_THUC_HOP_DONG = "kết thúc hợp đồng"
 
-class DichVuCoSo(ThucTheCoTen, ThucTheLuuTruDuoc, ABC):
-    @abstractmethod
-    def __init__(self, ma: str, ten: str, don_gia: float):
-        ktra_chuoi(ma, lambda x: la_ma_dich_vu_them(x), "Mã dịch vụ không hợp lệ")
-        ThucTheCoTen.__init__(self, ma, ten)
-        ThucTheLuuTruDuoc.__init__(self)
+@dataclass(frozen=True, order=True)
+class ThangNam:
+    nam: int
+    thang: int
 
-        ktra_so(don_gia, lambda x: la_so_duong(x), "Đơn giá phải là số dương")
-        self.__don_gia = don_gia
+    def __post_init__(self):
+        ktra_so(self.nam, lambda x: x > date.today().year - 100 and x <= date.today().year + 100, "Năm không hợp lệ")
+        ktra_so(self.thang, lambda x: x > 0 and x <= 12, "Tháng phải là số dương từ 1 đến 12")
 
-    @property
-    def don_gia(self) -> float:
-        return self.__don_gia
+    @classmethod
+    def tu_ngay(cls, ngay: date) -> "ThangNam":
+        return cls(ngay.year, ngay.month)
 
-class DichVuThem(DichVuCoSo):
-    """
-    Dịch vụ thêm tính theo tháng thuộc về hợp đồng
-    """
-    def __init__(self, ma: str, ten: str, don_gia: float):
-        super().__init__(ma, ten, don_gia)
+    @classmethod
+    def tu_chuoi(cls, ngay: str) -> "ThangNam":
+        ktra_chuoi(ngay, lambda x: len(x) == 7 and x[4] == "-" and x[0:4].isdigit() and x[5:7].isdigit(), "Chuỗi ngày không hợp lệ, định dạng phải là YYYY-MM")
+        return cls(int(ngay[0:4]), int(ngay[5:7]))
 
-class TienIchPhong(DichVuCoSo):
-    """
-    Tiện ích tính theo tháng thuộc về phòng
-    """
-    def __init__(self, ma: str, ten: str, don_gia: float):
-        super().__init__(ma, ten, don_gia)
+    def lui(self, so_thang_lui: int = 1) -> "ThangNam":
+        ktra_so(so_thang_lui, lambda x: x > 0, "Số tháng lùi phải là số dương")
+        thang = self.thang - so_thang_lui
+        nam = self.nam
+        while thang <= 0:
+            thang += 12
+            nam -= 1
+        return ThangNam(nam, thang)
+
+    def ngay_dau(self) -> date:
+        return date(self.nam, self.thang, 1)
+
+    def ngay_cuoi(self) -> date:
+        ngay_cuoi_thang = calendar.monthrange(self.nam, self.thang)[1]
+        return date(self.nam, self.thang, ngay_cuoi_thang)
+
+    def __str__(self) -> str:
+        return f"{self.nam:04d}-{self.thang:02d}"
 
 class HopDong(ThucTheGoc):
-    def __init__(self, ma: str, ngay_ky: date, ngay_het_han: date, ngay_bat_dau: date, ngay_ket_thuc: date, he_so_thang: int, gia_co_ban: float, tien_dat_coc: float, ma_sinh_vien: str, ma_phong: str, hoc_ky: str, dich_vu_them: dict[str, float] | None = None, phi_tien_nghi: float = 0, trang_thai: TrangThaiHopDong = TrangThaiHopDong.CHUA_THANH_TOAN):
+    def __init__(self, ma: str, ngay_ky: date, ngay_het_han: date, ngay_bat_dau: date, ngay_ket_thuc: date, he_so_thang: int, gia_phong: float, tien_dat_coc: float, ma_sinh_vien: str, ma_phong: str, trang_thai: TrangThaiHopDong = TrangThaiHopDong.CHUA_THANH_TOAN):
         ktra_chuoi(ma, lambda x: la_ma_hop_dong(x), "Mã hợp đồng không hợp lệ")
         super().__init__(ma)
 
@@ -62,28 +69,16 @@ class HopDong(ThucTheGoc):
         self.__ngay_het_han = ngay_het_han
 
         ktra_so(he_so_thang, lambda x: la_so_duong(x), "Hệ số tháng phải là số dương")
-        ktra_so(gia_co_ban, lambda x: la_so_duong(x), "Giá cơ bản phải là số dương")
+        ktra_so(gia_phong, lambda x: la_so_duong(x), "Giá cơ bản phải là số dương")
         ktra_so(tien_dat_coc, lambda x: la_so_duong(x), "Tiền đặt cọc phải là số dương")
-        ktra_so(phi_tien_nghi, lambda x: x >= 0, "Phí tiện nghi không được âm")
         self.__he_so_thang = he_so_thang
-        self.__gia_co_ban = gia_co_ban
+        self.__gia_phong = gia_phong
         self.__tien_dat_coc = tien_dat_coc
-        self.__phi_tien_nghi = phi_tien_nghi
-
-        if dich_vu_them is None:
-            dich_vu_them = {}
-        else:
-            for ma_dich_vu, don_gia in dich_vu_them.items():
-                ktra_ma_tham_chieu_hop_le(ma_dich_vu, "Mã dịch vụ thêm")
-                ktra_so(don_gia, lambda x: la_so_duong(x), f"Đơn giá dịch vụ phải là số dương: {ma_dich_vu}")
-        self.__dich_vu_them = dict(dich_vu_them)
 
         ktra_ma_tham_chieu_hop_le(ma_sinh_vien, "Mã sinh viên")
         ktra_ma_tham_chieu_hop_le(ma_phong, "Mã phòng")
-        ktra_ma_tham_chieu_hop_le(hoc_ky, "Mã học kỳ")
         self.__ma_sinh_vien = ma_sinh_vien
         self.__ma_phong = ma_phong
-        self.__hoc_ky = hoc_ky
 
         self.__trang_thai = trang_thai
 
@@ -104,10 +99,6 @@ class HopDong(ThucTheGoc):
         return self.__ngay_het_han
 
     @property
-    def gia_co_ban(self) -> float:
-        return self.__gia_co_ban
-
-    @property
     def tien_dat_coc(self) -> float:
         return self.__tien_dat_coc
 
@@ -124,24 +115,12 @@ class HopDong(ThucTheGoc):
         return self.__ma_phong
 
     @property
-    def dich_vu_them(self) -> dict[str, float]:
-        return self.__dich_vu_them.copy()
-
-    @property
-    def phi_tien_nghi(self) -> float:
-        return self.__phi_tien_nghi
-
-    @property
     def trang_thai(self) -> TrangThaiHopDong:
         return self.__trang_thai
 
     @property
-    def hoc_ky(self) -> str:
-        return self.__hoc_ky
-
-    @property
     def gia_phong(self) -> float:
-        return self.__gia_co_ban + self.__phi_tien_nghi
+        return self.__gia_phong
 
     def con_giu_cho(self, ngay_hom_nay: date | None = None) -> bool:
         ngay_hom_nay = ngay_hom_nay or date.today()
@@ -157,14 +136,13 @@ class HopDong(ThucTheGoc):
         if self.__trang_thai != TrangThaiHopDong.KET_THUC_HOP_DONG:
             self.__trang_thai = TrangThaiHopDong.KET_THUC_HOP_DONG
         else:
-            raise ValueError(f"Hợp đồng {self.ma} đã kết thúc, không thể kết thúc lại")
+            raise ValueError(f"Hợp đồng {self.ma} đã kết thúc")
 
     def tong_tien(self) -> float:
         """
-        Tính tổng tiền của hợp đồng, bao gồm: giá cơ bản, phí tiện nghi, dịch vụ thêm.
+        Tính tổng tiền của hợp đồng, bao gồm: tiền phòng (giá cơ bản * hệ số tháng)
         """
-        tong_tien_dich_vu = sum(self.__dich_vu_them.values())
-        return (self.gia_phong + tong_tien_dich_vu) * self.__he_so_thang
+        return self.gia_phong * self.__he_so_thang
 
 class HoaDonThang(ThucTheGoc):
     def __init__(self, ma: str, thang_nam: ThangNam, dien_cu: int, dien_moi: int, don_gia_dien: float, nuoc_cu: int, nuoc_moi: int, don_gia_nuoc: float, phong: str, han_chot: date, trang_thai: TrangThaiHoaDon = TrangThaiHoaDon.CHUA_THANH_TOAN):

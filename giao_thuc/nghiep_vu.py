@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from typing import Callable, TypeVar, Concatenate, ParamSpec
 
 from thuc_the.dia_ly import Tinh
-from thuc_the.hoc_vu import HocKy
 from thuc_the.tai_chinh import HopDong, HoaDonThang
 from thuc_the.tai_khoan import TaiKhoan, LoaiTaiKhoan
 from thuc_the.vi_pham import ViPham
@@ -123,7 +122,7 @@ class GiaoThucDieuPhoi(ABC):
         """
         Thay đổi trạng thái hợp đồng thành đã thanh toán.
         Cập nhật phòng của sinh viên, danh sách sinh viên của phòng.
-        Ném lỗi nếu hợp đồng không ở trạng thái thanh toán hoặc không còn giữ chỗ trong phòng.
+        Ném lỗi nếu hợp đồng không ở trạng thái chưa thanh toán hoặc không còn giữ chỗ trong phòng.
         """
         raise NotImplementedError
 
@@ -131,7 +130,8 @@ class GiaoThucDieuPhoi(ABC):
     def ket_thuc_hop_dong(self, hop_dong: HopDong) -> None:
         """
         Thay đổi trạng thái hợp đồng thành kết thúc.\n
-        Xóa phòng của sinh viên, xóa sinh viên khỏi danh sách sinh viên của phòng nếu hợp đồng đã thanh toán.
+        Cập nhật phòng của sinh viên, danh sách sinh viên của phòng.
+        Ném lỗi nếu hợp đồng đã kết thúc.
         """
         raise NotImplementedError
 
@@ -153,12 +153,11 @@ class GiaoThucDieuPhoi(ABC):
 
     # Các hàm thống kê
     @abstractmethod
-    def thong_ke_so_phong(self, hoc_ky: HocKy, toa_nha: ToaNha | None = None, loai_phong: int | None = None) -> tuple[int, int, int]:
+    def thong_ke_so_phong(self, toa_nha: ToaNha | None = None, loai_phong: int | None = None) -> tuple[int, int, int]:
         """
-        Trả về số lượng phòng trống, số lượng phòng đã thuê, tổng số phòng trong tòa nhà.
+        Trả về số lượng phòng trống, số lượng phòng có hợp đồng còn giữ chỗ (có người), tổng số phòng trong tòa nhà.
         
         Tham số:
-            - hoc_ky: học kỳ hiện tại
             - toa_nha: nếu là None thì thống kê cho tất cả các tòa nhà, nếu là một tòa nhà cụ thể thì thống kê cho tòa nhà đó.
             - loai_phong: sức chứa tối đa của phòng, nếu là None thì thống kê tất cả các loại phòng, nếu là một số nguyên cụ thể thì thống kê cho loại phòng đó.
 
@@ -168,24 +167,23 @@ class GiaoThucDieuPhoi(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def thong_ke_ty_le_lap_day(self, hoc_ky: HocKy, toa_nha: ToaNha | None = None, loai_phong: int | None = None) -> float:
+    def thong_ke_ty_le_lap_day(self, toa_nha: ToaNha | None = None, loai_phong: int | None = None) -> float:
         """
         Trả về tỷ lệ lấp đầy của tòa nhà.
 
         Tham số:
-            - hoc_ky: học kỳ hiện tại
             - toa_nha: nếu là None thì thống kê toàn bộ ktx, nếu là một tòa nhà cụ thể thì thống kê tòa nhà đó.
             - loai_phong: sức chứa tối đa của phòng, nếu là None thì thống kê tất cả loại phòng, nếu là số nguyên cụ thể thì thống kê loại phòng đó.
 
         Trả về:
-            - float: tỷ lệ lấp đầy của tòa nhà, giá trị từ 0 đến 1, ví dụ 0.75 nghĩa là 75% số phòng đã có người thuê."""
+            - float: tỷ lệ lấp đầy của tòa nhà, giá trị từ 0 đến 1, ví dụ 0.75 nghĩa là 75% sức chứa đã có hợp đồng giữ chỗ."""
         raise NotImplementedError
 
     @abstractmethod
-    def thong_ke_cong_no(self, hoc_ky: HocKy | None = None) -> tuple[float, int]:
+    def thong_ke_cong_no(self) -> tuple[float, int]:
         """
         Trả về (Tổng số tiền nợ, Tổng số lượng sinh viên đang nợ).
-        Nếu hoc_ky là None, thống kê công nợ trên toàn hệ thống.
+        Tiền nợ là tiền hợp đồng chưa thanh toán, không tính tiền hóa đơn tháng.
         """
         raise NotImplementedError
 
