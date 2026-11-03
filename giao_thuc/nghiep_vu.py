@@ -55,7 +55,7 @@ class GiaoThucDieuPhoi(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def tao_va_them(self, loai_thuc_the: Callable[Concatenate[str, P], T], /, *args: P.args, **kwargs: P.kwargs) -> T:
+    def tao_va_them(self, loai_thuc_the: Callable[Concatenate[str, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
         """
         Tạo và thêm thực thể vào hệ thống.
         Trả về thực thể đã tạo và thêm vào hệ thống.\n
