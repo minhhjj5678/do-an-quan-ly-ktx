@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 
 from thuc_the.ky_tuc_xa import Phong, SinhVien, ToaNha
-from thuc_the.tai_chinh import HoaDonThang, HopDong, TrangThaiHoaDon
+from thuc_the.tai_chinh import HoaDonThang, HopDong
 from thuc_the.tai_khoan import LoaiTaiKhoan, TaiKhoan
-from thuc_the.vi_pham import TrangThaiViPham, ViPham
+from thuc_the.vi_pham import ViPham
 
 
 @dataclass
@@ -108,8 +108,6 @@ def kiem_cheo_du_lieu(kho_du_lieu: KhoDuLieu) -> list[str]:
             if tai_khoan.loai_tai_khoan == LoaiTaiKhoan.SINH_VIEN:
                 if tai_khoan.ma_chu_the not in kho_du_lieu.sinh_vien:
                     danh_sach_loi.append(f"Tài khoản {tai_khoan.ma} thuộc sinh viên {tai_khoan.ma_chu_the} nhưng sinh viên không tồn tại.")
-                elif not kho_du_lieu.sinh_vien[tai_khoan.ma_chu_the].con_hoat_dong and tai_khoan.con_hoat_dong:
-                    danh_sach_loi.append(f"Tài khoản {tai_khoan.ma} thuộc sinh viên {tai_khoan.ma_chu_the} nhưng sinh viên đã ngừng hoạt động trong khi tài khoản vẫn còn hoạt động.")
                 sinh_vien_da_co_tai_khoan[tai_khoan.ma_chu_the] = sinh_vien_da_co_tai_khoan.get(tai_khoan.ma_chu_the, []) + [tai_khoan.ma]
                 
             elif tai_khoan.loai_tai_khoan == LoaiTaiKhoan.QUAN_TRI_VIEN:
