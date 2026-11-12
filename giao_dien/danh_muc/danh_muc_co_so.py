@@ -32,11 +32,9 @@ class ManHinhDanhMucCoSo(ttk.Frame):
 
         self.txt_tim = ttk.Entry(thanh, width=35)
         self.txt_tim.pack(side="left", padx=4)
+        self.txt_tim.bind("<Return>",lambda event: self.tim_kiem())
 
-        ttk.Button(
-            thanh, text="Tìm kiếm",
-            command=self.tim_kiem
-        ).pack(side="left", padx=4)
+        ttk.Button(thanh, text="Tìm kiếm",command=self.tim_kiem ).pack(side="left", padx=4)
 
         ttk.Button(
             thanh, text="Làm mới",
@@ -78,6 +76,7 @@ class ManHinhDanhMucCoSo(ttk.Frame):
             yscrollcommand=cuon_y.set,
             xscrollcommand=cuon_x.set
         )
+        self.bang.bind("<Double-1>",lambda event: self.xem_chi_tiet())
 
         self.bang.grid(row=0, column=0, sticky="nsew")
         cuon_y.grid(row=0, column=1, sticky="ns")
