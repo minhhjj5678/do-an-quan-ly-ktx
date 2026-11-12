@@ -1,7 +1,7 @@
 from enum import Enum
 
 from thuc_the.thuc_the_goc import ThucTheGoc, ThucTheLuuTruDuoc
-
+from tien_ich.bam_mat_khau import kiem_tra_mat_khau
 
 class LoaiTaiKhoan(Enum):
     QUAN_TRI_VIEN = "quản trị viên"
@@ -35,8 +35,8 @@ class TaiKhoan(ThucTheGoc, ThucTheLuuTruDuoc):
         return self.__loai_tai_khoan == LoaiTaiKhoan.QUAN_TRI_VIEN
 
     def doi_mat_khau(self, mat_khau_bam_moi: str):
-        pass
+        self.__mat_khau_bam = mat_khau_bam_moi
 
-    def kiem_tra(self, mat_khau_bam: str) -> bool:
-        """Kiểm tra mật khẩu đã băm có khớp với mật khẩu tài khoản hay không"""
-        return True
+    def kiem_tra(self, mat_khau: str) -> bool:
+        """Kiểm tra mật khẩu người dùng nhập (chưa băm) có khớp với mật khẩu của tài khoản hay không"""
+        return kiem_tra_mat_khau(mat_khau, self.__mat_khau_bam)
