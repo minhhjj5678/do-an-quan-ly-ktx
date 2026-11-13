@@ -1,12 +1,14 @@
 ﻿import tkinter as tk
 from tkinter import messagebox
 
+from thuc_the.tai_khoan import TaiKhoan
+
 from .danh_muc_co_so import ManHinhDanhMucCoSo
 from ..xac_thuc.quan_tri_tai_khoan import ManHinhQuanTriTaiKhoan
 
 
 class ManHinhTaiKhoan(ManHinhDanhMucCoSo):
-    LOAI = "TaiKhoan"
+    LOAI = TaiKhoan
 
     TRUONG = [
         "tai_khoan",

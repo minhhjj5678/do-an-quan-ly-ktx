@@ -1,8 +1,8 @@
 from .danh_muc_co_so import ManHinhDanhMucCoSo
-
+from thuc_the.tai_chinh import HopDong
 
 class ManHinhHopDong(ManHinhDanhMucCoSo):
-    LOAI = "HopDong"
+    LOAI = HopDong
 
     TRUONG = [
         "ma_hop_dong",

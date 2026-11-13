@@ -1,8 +1,10 @@
+from thuc_the.tai_chinh import HoaDonThang
+
 from .danh_muc_co_so import ManHinhDanhMucCoSo
 
 
 class ManHinhHoaDonThang(ManHinhDanhMucCoSo):
-    LOAI = "HoaDonThang"
+    LOAI = HoaDonThang
 
     TRUONG = [
         "ma_hoa_don",

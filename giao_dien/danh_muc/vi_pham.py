@@ -1,8 +1,10 @@
+from thuc_the.vi_pham import ViPham
+
 from .danh_muc_co_so import ManHinhDanhMucCoSo
 
 
 class ManHinhViPham(ManHinhDanhMucCoSo):
-    LOAI = "ViPham"
+    LOAI = ViPham
 
     TRUONG = [
         "ma_vi_pham",

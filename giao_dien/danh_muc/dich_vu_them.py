@@ -1,19 +1,24 @@
+from thuc_the.tai_chinh import DichVuThem
 from .danh_muc_co_so import ManHinhDanhMucCoSo
 
 
 class ManHinhDichVuThem(ManHinhDanhMucCoSo):
-    LOAI = "DichVuThem"
+    LOAI = DichVuThem
     CO_LUU_TRU = True
 
     TRUONG = [
-        "ma_dich_vu",
-        "ten_dich_vu",
-        "don_gia",
-        "don_vi"
+        "ma",
+        "ten",
+        "don_gia"
     ]
 
     BAT_BUOC = [
-        "ma_dich_vu",
-        "ten_dich_vu",
+        "ten",
         "don_gia"
     ]
+
+    TRUONG_GIU_CHUOI = {"ten"}
+
+    KIEU_TRUONG = {
+        "don_gia": float
+    }

@@ -1,5 +1,4 @@
-﻿
-import tkinter as tk
+﻿import tkinter as tk
 from tkinter import ttk, messagebox
 
 from .xac_thuc.dang_nhap import ManHinhDangNhap
@@ -11,7 +10,7 @@ from .danh_muc.phong import ManHinhPhong
 from .danh_muc.toa_nha import ManHinhToaNha
 from .danh_muc.hop_dong import ManHinhHopDong
 from .danh_muc.hoa_don_thang import ManHinhHoaDonThang
-from .danh_muc.dich_vu_them import ManHinhDichVuThem
+#from .danh_muc.dich_vu_them import ManHinhDichVuThem
 from .danh_muc.vi_pham import ManHinhViPham
 from .danh_muc.tai_khoan import ManHinhTaiKhoan
 
@@ -19,6 +18,7 @@ from .nghiep_vu.nghiep_vu import ManHinhNghiepVu
 from .thong_ke.thong_ke import ManHinhThongKe
 from .cai_dat.cai_dat import ManHinhCaiDat
 from .dung_chung.adapter import Adapter
+from .dung_chung.mau_sac import lay_mau
 
 
 class App(tk.Tk):
@@ -26,6 +26,13 @@ class App(tk.Tk):
         super().__init__()
 
         self.adapter = Adapter(dieu_phoi, phien)
+        # Nạp dữ liệu file một lần khi khởi động; nạp API nếu cần sẽ do
+        # nghiệp vụ thực hiện trong luồng phụ (không khóa Tkinter).
+        self.loi_nap_file = None
+        try:
+            self.adapter.nap_du_lieu_file()
+        except Exception as exc:
+            self.loi_nap_file = str(exc)
         self.title("Hệ thống quản lý ký túc xá")
         self.geometry("1280x780")
         self.minsize(900, 580)
@@ -38,7 +45,22 @@ class App(tk.Tk):
         self.ten_man_hinh = tk.StringVar(value="Trang chủ")
 
         self.doi_chu_de("LIGHT")
+        try:
+            cau_hinh = self.adapter.doc_cau_hinh()
+            chu_de = (cau_hinh.get("chu_de", "LIGHT")
+                      if isinstance(cau_hinh, dict)
+                      else getattr(cau_hinh, "chu_de", "LIGHT"))
+            self.doi_chu_de(str(chu_de))
+        except Exception:
+            pass
+        if self.loi_nap_file:
+            self.after(100, lambda: messagebox.showwarning(
+                "Dữ liệu chưa sẵn sàng", self.loi_nap_file, parent=self))
 
+        # Con lăn hoạt động ở mọi widget bên trong vùng nội dung.
+        self.bind_all("<MouseWheel>", self._xu_ly_cuon_chuot, add="+")
+        self.bind_all("<Button-4>", self._xu_ly_cuon_chuot, add="+")
+        self.bind_all("<Button-5>", self._xu_ly_cuon_chuot, add="+")
         self.protocol("WM_DELETE_WINDOW", self.xac_nhan_thoat)
         self.hien_thi_dang_nhap()
 
@@ -76,6 +98,7 @@ class App(tk.Tk):
         )
         self.menu.grid(row=0, column=0, sticky="nsew")
         self.menu.grid_propagate(False)
+        self.menu.pack_propagate(False)
 
         self.khu_vuc_phai = ttk.Frame(self.khung_chinh)
         self.khu_vuc_phai.grid(
@@ -87,6 +110,7 @@ class App(tk.Tk):
         self.tao_menu()
         self.tao_khu_vuc_noi_dung()
         self.hien_thi_chao_mung()
+        self.after(60, self._cap_nhat_thanh_cuon_trang)
 
     def tao_menu(self):
         ttk.Label(
@@ -123,8 +147,11 @@ class App(tk.Tk):
         scrollbar = ttk.Scrollbar(
             khung_cuon,
             orient="vertical",
-            command=canvas.yview
+            command=canvas.yview,
+            style="Sidebar.Vertical.TScrollbar"
         )
+
+        self.canvas_menu = canvas
 
         danh_sach_nut = ttk.Frame(
             canvas,
@@ -169,7 +196,7 @@ class App(tk.Tk):
             ("Tòa nhà", ManHinhToaNha),
             ("Hợp đồng", ManHinhHopDong),
             ("Hóa đơn tháng", ManHinhHoaDonThang),
-            ("Dịch vụ thêm", ManHinhDichVuThem),
+            #("Dịch vụ thêm", ManHinhDichVuThem),
             ("Vi phạm", ManHinhViPham)
         ]
 
@@ -246,19 +273,36 @@ class App(tk.Tk):
             text="HỆ THỐNG QUẢN LÝ KÝ TÚC XÁ"
         ).pack(side="right")
 
-        ttk.Separator(
-            self.khu_vuc_phai
-        ).grid(row=0, column=0, sticky="sew")
+        # Không đặt Separator cùng ô grid với thanh tiêu đề.
 
-        self.noi_dung = ttk.Frame(
-            self.khu_vuc_phai,
-            padding=16
+        # Thanh cuộn CHUNG cho mọi màn hình nằm bên phải.
+        # Các bảng Treeview / thẻ Phòng vẫn có thanh cuộn riêng để xem dữ liệu.
+        vung_cuon = ttk.Frame(self.khu_vuc_phai)
+        vung_cuon.grid(row=1, column=0, sticky="nsew")
+        vung_cuon.columnconfigure(0, weight=1)
+        vung_cuon.rowconfigure(0, weight=1)
+
+        self.canvas_noi_dung = tk.Canvas(
+            vung_cuon, bd=0, highlightthickness=0,
+            bg=lay_mau(self.chu_de_hien_tai)["nen"]
         )
-        self.noi_dung.grid(
-            row=1,
-            column=0,
-            sticky="nsew"
+        self.thanh_cuon_trang = ttk.Scrollbar(
+            vung_cuon, orient="vertical",
+            command=self.canvas_noi_dung.yview,
+            style="Content.Vertical.TScrollbar"
         )
+        self.canvas_noi_dung.configure(
+            yscrollcommand=self.thanh_cuon_trang.set
+        )
+        self.canvas_noi_dung.grid(row=0, column=0, sticky="nsew")
+        self.thanh_cuon_trang.grid(row=0, column=1, sticky="ns")
+
+        self.noi_dung = ttk.Frame(self.canvas_noi_dung, padding=16)
+        self._id_noi_dung = self.canvas_noi_dung.create_window(
+            (0, 0), window=self.noi_dung, anchor="nw"
+        )
+        self.canvas_noi_dung.bind("<Configure>", self._cap_nhat_thanh_cuon_trang)
+        self.noi_dung.bind("<Configure>", self._cap_nhat_thanh_cuon_trang)
 
         thanh_trang_thai = ttk.Frame(
             self.khu_vuc_phai,
@@ -280,30 +324,82 @@ class App(tk.Tk):
             text="Phiên bản giao diện 1.0"
         ).pack(side="right")
 
+    def _cap_nhat_thanh_cuon_trang(self, event=None):
+        """Giữ nội dung rộng bằng cửa sổ; cho cuộn nếu nội dung cao hơn."""
+        if not hasattr(self, "canvas_noi_dung"):
+            return
+        canvas = self.canvas_noi_dung
+        if not canvas.winfo_exists():
+            return
+        rong = max(canvas.winfo_width(), 1)
+        cao = max(canvas.winfo_height(), self.noi_dung.winfo_reqheight())
+        canvas.itemconfigure(self._id_noi_dung, width=rong, height=cao)
+        canvas.configure(scrollregion=canvas.bbox("all"))
+
+    @staticmethod
+    def _nam_trong(widget, cha):
+        """Kiểm tra widget nằm trong vùng giao diện cha hay không."""
+        while widget is not None:
+            if widget is cha:
+                return True
+            widget = getattr(widget, "master", None)
+        return False
+
+    def _xu_ly_cuon_chuot(self, event):
+        """Cuộn đúng nơi đang trỏ chuột: menu, trang, hoặc bảng/phòng."""
+        try:
+            if event.widget.winfo_toplevel() is not self:
+                return  # Không ảnh hưởng các cửa sổ Toplevel
+        except tk.TclError:
+            return
+
+        buoc = (-1 if event.delta > 0 else 1) if getattr(event, "delta", 0) else (
+            -1 if getattr(event, "num", 0) == 4 else 1)
+
+        if hasattr(self, "canvas_menu") and self._nam_trong(event.widget, self.menu):
+            self.canvas_menu.yview_scroll(buoc, "units")
+            return "break"
+
+        if not hasattr(self, "noi_dung"):
+            return
+        if event.widget is self.canvas_noi_dung:
+            self.canvas_noi_dung.yview_scroll(buoc, "units")
+            return "break"
+        if not self._nam_trong(event.widget, self.noi_dung):
+            return
+
+        widget = event.widget
+        while widget is not self.noi_dung:
+            # Chỉ cuộn bảng hoặc Canvas con khi chúng THỰC SỰ có dữ liệu tràn.
+            if isinstance(widget, (ttk.Treeview, tk.Text, tk.Listbox)):
+                dau, cuoi = widget.yview()
+                if cuoi - dau < 0.999:
+                    return  # Tkinter có sẵn hành vi cuộn của các widget này
+            if isinstance(widget, tk.Canvas) and widget is not self.canvas_noi_dung:
+                dau, cuoi = widget.yview()
+                if cuoi - dau < 0.999:
+                    widget.yview_scroll(buoc, "units")
+                    return "break"
+            widget = widget.master
+
+        self.canvas_noi_dung.yview_scroll(buoc, "units")
+        return "break"
+
     def hien_thi_chao_mung(self):
-        self.ten_man_hinh.set("Trang chủ")
-
-        ttk.Label(
-            self.noi_dung,
-            text="CHÀO MỪNG ĐẾN HỆ THỐNG",
-            style="Welcome.TLabel"
-        ).pack(pady=(65, 18))
-
-        vai_tro = (
-            "Quản trị viên"
-            if self.adapter.la_admin()
-            else "Nhân viên"
-        )
-
-        ttk.Label(
-            self.noi_dung,
-            text=f"Bạn đang đăng nhập với vai trò: {vai_tro}"
-        ).pack(pady=8)
-
-        ttk.Label(
-            self.noi_dung,
-            text="Chọn chức năng ở thanh bên trái để bắt đầu."
-        ).pack(pady=8)
+        self.ten_man_hinh.set('Trang chủ')
+        dau = ttk.Frame(self.noi_dung, style='KTX.Banner.TFrame', padding=28)
+        dau.pack(fill='x', pady=(15, 18))
+        ttk.Label(dau, text='Chào mừng đến với ký túc xá!',
+                  style='KTX.BannerTitle.TLabel').pack(anchor='w')
+        ttk.Label(dau, text='Quản lý gọn gàng, mọi thông tin ở một nơi.',
+                  style='KTX.BannerSub.TLabel').pack(anchor='w', pady=(10, 0))
+        vai_tro = 'Quản trị viên' if self.adapter.la_admin() else 'Nhân viên'
+        thong_tin = ttk.Frame(self.noi_dung, style='KTX.Panel.TFrame', padding=22)
+        thong_tin.pack(fill='x')
+        ttk.Label(thong_tin, text=f'Bạn đang đăng nhập: {vai_tro}',
+                  style='KTX.PanelTitle.TLabel').pack(anchor='w')
+        ttk.Label(thong_tin, text='Chọn một mục từ thanh bên trái để bắt đầu làm việc.',
+                  style='KTX.PanelText.TLabel').pack(anchor='w', pady=(6, 0))
 
     def chuyen_man_hinh(self, lop, ten=None):
         for widget in self.noi_dung.winfo_children():
@@ -326,6 +422,9 @@ class App(tk.Tk):
                 )
 
             man_hinh.pack(fill="both", expand=True)
+            self.canvas_noi_dung.yview_moveto(0)
+            self.after_idle(self._cap_nhat_thanh_cuon_trang)
+            self.after(60, self._cap_nhat_thanh_cuon_trang)
 
             for ten_nut, nut in self.nut_menu.items():
                 nut.configure(
@@ -378,136 +477,98 @@ class App(tk.Tk):
             self.destroy()
 
     def doi_chu_de(self, chu_de):
-        bang_mau = {
-            "LIGHT": {
-                "nen": "#F4F6FA",
-                "chu": "#253047",
-                "menu": "#E8EDF5",
-                "nut": "#FFFFFF",
-                "chon": "#BFD6FA"
-            },
-            "GREY": {
-                "nen": "#D8DCE2",
-                "chu": "#242B35",
-                "menu": "#C4CBD5",
-                "nut": "#EDF0F3",
-                "chon": "#A9B9D1"
-            },
-            "DARK": {
-                "nen": "#252B35",
-                "chu": "#F4F6FA",
-                "menu": "#1C222B",
-                "nut": "#343D4B",
-                "chon": "#476A9E"
-            }
-        }
+        """Áp dụng một bảng màu cho toàn bộ ttk; không đổi dữ liệu nghiệp vụ."""
+        self.chu_de_hien_tai = str(chu_de).upper()
+        mau = lay_mau(self.chu_de_hien_tai)
+        self.mau_menu = mau['menu']
+        self.configure(bg=mau['nen'])
+        st = self.style
+        st.configure('.', font=('Segoe UI', 10))
+        st.configure('TFrame', background=mau['nen'])
+        st.configure('TLabel', background=mau['nen'], foreground=mau['chu'])
+        st.configure('TLabelframe', background=mau['the'],
+                     bordercolor=mau['vien'], relief='solid')
+        st.configure('TLabelframe.Label', background=mau['nen'],
+                     foreground=mau['chu'], font=('Segoe UI', 10, 'bold'))
+        st.configure('TButton', padding=(11, 8), background=mau['nut'],
+                     foreground=mau['chu'], font=('Segoe UI', 10))
+        st.map('TButton', background=[('active', mau['chon'])])
+        st.configure('TEntry', padding=6, fieldbackground=mau['the'],
+                     foreground=mau['chu'])
+        st.configure('TCombobox', padding=6, fieldbackground=mau['the'],
+                     background=mau['nut'], foreground=mau['chu'])
+        st.map('TCombobox', fieldbackground=[('readonly', mau['the'])],
+               foreground=[('readonly', mau['chu'])])
+        st.configure('TCheckbutton', background=mau['nen'], foreground=mau['chu'])
+        st.configure('Treeview', rowheight=33, background=mau['the'],
+                     fieldbackground=mau['the'], foreground=mau['chu'],
+                     font=('Segoe UI', 10))
+        st.configure('Treeview.Heading', background=mau['nhat'],
+                     foreground=mau['chu'], font=('Segoe UI', 10, 'bold'), padding=7)
+        st.map('Treeview', background=[('selected', mau['chon'])],
+               foreground=[('selected', mau['chu'])])
+        st.configure('KTX.Treeview', rowheight=34,
+                     background=mau['the'], fieldbackground=mau['the'],
+                     foreground=mau['chu'])
+        st.map('KTX.Treeview', background=[('selected', mau['chon'])],
+               foreground=[('selected', mau['chu'])])
+        st.configure('KTX.Treeview.Heading', background=mau['nhat'],
+                     foreground=mau['chu'], padding=8,
+                     font=('Segoe UI', 10, 'bold'))
+        st.configure('Sidebar.Vertical.TScrollbar',
+                     background=mau['chinh'], troughcolor=mau['menu'],
+                     bordercolor=mau['vien'], arrowcolor=mau['chu'], width=14)
+        st.configure('Content.Vertical.TScrollbar',
+                     background=mau['chinh'], troughcolor=mau['nen'],
+                     bordercolor=mau['vien'], arrowcolor=mau['chu'], width=14)
+        st.configure('Sidebar.TFrame', background=mau['menu'])
+        st.configure('SidebarTitle.TLabel', background=mau['menu'],
+                     foreground=mau['chu'], font=('Segoe UI', 17, 'bold'))
+        st.configure('SidebarSubtitle.TLabel', background=mau['menu'],
+                     foreground=mau['phu'])
+        st.configure('Sidebar.TButton', background=mau['nut'],
+                     foreground=mau['chu'], padding=(14, 10), anchor='w')
+        st.configure('SelectedSidebar.TButton', background=mau['chon'],
+                     foreground=mau['chu'], padding=(14, 10), anchor='w',
+                     font=('Segoe UI', 10, 'bold'))
+        st.configure('PageTitle.TLabel', font=('Segoe UI', 17, 'bold'))
+        st.configure('Welcome.TLabel', font=('Segoe UI', 21, 'bold'))
+        st.configure('KTX.Banner.TFrame', background=mau['chinh'])
+        st.configure('KTX.BannerTitle.TLabel', background=mau['chinh'],
+                     foreground=mau['trang'], font=('Segoe UI', 20, 'bold'))
+        st.configure('KTX.BannerSub.TLabel', background=mau['chinh'],
+                     foreground='#F0F7FF', font=('Segoe UI', 10))
+        st.configure('KTX.Panel.TFrame', background=mau['nhat'])
+        st.configure('KTX.PanelTitle.TLabel', background=mau['nhat'],
+                     foreground=mau['chu'], font=('Segoe UI', 12, 'bold'))
+        st.configure('KTX.PanelText.TLabel', background=mau['nhat'], foreground=mau['chu'])
+        st.configure('KTX.CardTitle.TLabel', foreground=mau['chu'],
+                     font=('Segoe UI', 12, 'bold'))
+        st.configure('KTX.Muted.TLabel', foreground=mau['phu'], font=('Segoe UI', 9))
+        st.configure('KTX.Primary.TButton', background=mau['chinh'],
+                     foreground='white', padding=(13, 9),
+                     font=('Segoe UI', 10, 'bold'))
+        st.map('KTX.Primary.TButton',
+               background=[('active', mau['chinh_dam'])],
+               foreground=[('active', 'white')])
+        st.configure('KTX.Light.TButton', background=mau['nut'],
+                     foreground=mau['chu'], padding=(12, 8))
+        st.configure('KTX.Danger.TButton', background='#FFF0ED',
+                     foreground='#A93E38', padding=(12, 8))
 
-        mau = bang_mau.get(
-            chu_de,
-            bang_mau["LIGHT"]
-        )
+        if hasattr(self, "canvas_noi_dung") and self.canvas_noi_dung.winfo_exists():
+            self.canvas_noi_dung.configure(bg=mau["nen"])
 
-        self.mau_menu = mau["menu"]
-        self.configure(bg=mau["nen"])
-
-        self.style.configure(
-            ".",
-            font=("Segoe UI", 10)
-        )
-
-        self.style.configure(
-            "TFrame",
-            background=mau["nen"]
-        )
-        self.style.configure(
-            "TLabel",
-            background=mau["nen"],
-            foreground=mau["chu"]
-        )
-        self.style.configure(
-            "TLabelframe",
-            background=mau["nen"]
-        )
-        self.style.configure(
-            "TLabelframe.Label",
-            background=mau["nen"],
-            foreground=mau["chu"]
-        )
-        self.style.configure(
-            "TButton",
-            padding=(12, 8),
-            font=("Segoe UI", 10)
-        )
-        self.style.configure(
-            "TEntry",
-            padding=5
-        )
-        self.style.configure(
-            "TCombobox",
-            padding=5
-        )
-        self.style.configure(
-            "Treeview",
-            rowheight=30,
-            font=("Segoe UI", 10),
-            background=mau["nut"],
-            foreground=mau["chu"],
-            fieldbackground=mau["nut"]
-        )
-        self.style.configure(
-            "Treeview.Heading",
-            font=("Segoe UI", 10, "bold"),
-            padding=7
-        )
-        self.style.map(
-            "Treeview",
-            background=[("selected", mau["chon"])],
-            foreground=[("selected", mau["chu"])]
-        )
-
-        self.style.configure(
-            "Sidebar.TFrame",
-            background=mau["menu"]
-        )
-        self.style.configure(
-            "SidebarTitle.TLabel",
-            background=mau["menu"],
-            foreground=mau["chu"],
-            font=("Segoe UI", 17, "bold")
-        )
-        self.style.configure(
-            "SidebarSubtitle.TLabel",
-            background=mau["menu"],
-            foreground=mau["chu"],
-            font=("Segoe UI", 10)
-        )
-        self.style.configure(
-            "Sidebar.TButton",
-            background=mau["nut"],
-            foreground=mau["chu"],
-            padding=(14, 10),
-            anchor="w"
-        )
-        self.style.configure(
-            "SelectedSidebar.TButton",
-            background=mau["chon"],
-            foreground=mau["chu"],
-            padding=(14, 10),
-            anchor="w",
-            font=("Segoe UI", 10, "bold")
-        )
-        self.style.configure(
-            "PageTitle.TLabel",
-            font=("Segoe UI", 17, "bold")
-        )
-        self.style.configure(
-            "Welcome.TLabel",
-            font=("Segoe UI", 21, "bold")
-        )
-
-        # Cập nhật Canvas của menu khi đổi chủ đề
-        if hasattr(self, "menu") and self.menu.winfo_exists():
+        # Canvas menu là widget tk, nên cập nhật màu riêng.
+        if hasattr(self, 'menu') and self.menu.winfo_exists():
             for widget in self.menu.winfo_children():
                 for con in widget.winfo_children():
                     if isinstance(con, tk.Canvas):
-                        con.configure(bg=self.mau_menu)
+                        con.configure(bg=mau['menu'])
+
+        # Các widget tk.Canvas hoặc tk.Frame màu riêng cập nhật qua hook đơn giản.
+        if hasattr(self, 'noi_dung') and self.noi_dung.winfo_exists():
+            for man_hinh in self.noi_dung.winfo_children():
+                ham = getattr(man_hinh, 'cap_nhat_mau', None)
+                if callable(ham):
+                    ham()
