@@ -7,9 +7,8 @@ from ..dung_chung.ho_tro import hien_thi
 
 class ManHinhSinhVien(ManHinhDanhMucCoSo):
     LOAI = SinhVien
-    TIEU_DE = "Quản lý sinh viên"
-    MO_TA = "Thông tin sinh viên, số điện thoại và địa chỉ liên hệ."
     CO_LUU_TRU = True
+    TRUONG_CHI_DOC_KHI_SUA = {'nam_sinh', 'cccd'}
     TRUONG = ['ma', 'ten', 'sdt', 'nam_sinh', 'cccd',
               'dia_chi_chi_tiet', 'tinh', 'xa']
     BAT_BUOC = ['ten', 'sdt', 'nam_sinh', 'cccd',
@@ -31,7 +30,9 @@ class ManHinhSinhVien(ManHinhDanhMucCoSo):
 
         try:
             ds_tinh = self.adapter.dia_ly()
-            # Adapter mới: dict[str, Tinh], Tinh.danh_sach_xa: dict[str, Xa]
+            # Adapter trả dict nếu không truyền mã tỉnh.
+            if not isinstance(ds_tinh, dict) or not ds_tinh:
+                raise ValueError('Danh sách Tỉnh/Xã chưa được nạp. Hãy mở lại form sau khi tải xong.')
             tinh_theo_ma = {str(t.ma): t for t in ds_tinh.values()}
             for ma, tinh in tinh_theo_ma.items():
                 ma_tinh_theo_nhan[f'{tinh.ten} ({ma})'] = ma

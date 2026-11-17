@@ -12,6 +12,7 @@ from typing import get_type_hints, get_origin, get_args
 
 from thuc_the.thuc_the_goc import ThucTheGoc
 from ..dung_chung.ho_tro import hien_thi
+from ..dung_chung.mau_sac import lay_mau
 
 
 class ManHinhDanhMucCoSo(ttk.Frame):
@@ -23,6 +24,8 @@ class ManHinhDanhMucCoSo(ttk.Frame):
     TRUONG_CHI_DOC_KHI_SUA = set()
     CO_LUU_TRU = False
     CHO_PHEP_XOA = True
+    CHO_PHEP_SUA = True
+    TRUONG_CHI_DOC_KHI_TAO = {"trang_thai"}
 
     def __init__(self, parent, adapter):
         super().__init__(parent, padding=12)
@@ -33,7 +36,6 @@ class ManHinhDanhMucCoSo(ttk.Frame):
             self._kieu_truong = get_type_hints(self.LOAI.__init__)
         except (NameError, TypeError):
             self._kieu_truong = {}
-        # Dành cho các thực thể chưa có sơ đồ trường được cung cấp.
         if not self.TRUONG:
             self.TRUONG = [t for t, p in self._tham_so.items()
                            if t != 'self' and p.kind in (
@@ -45,29 +47,46 @@ class ManHinhDanhMucCoSo(ttk.Frame):
                              if t not in ('self', 'ma')
                              and p.default is inspect.Parameter.empty
                              and p.kind not in (inspect.Parameter.VAR_KEYWORD,
-                                                inspect.Parameter.VAR_POSITIONAL)]
+                                                 inspect.Parameter.VAR_POSITIONAL)]
         self.tao_giao_dien()
         self.tai_du_lieu()
 
     def _tao_kieu_nut(self):
+        mau = lay_mau(getattr(self.winfo_toplevel(), 'chu_de_hien_tai', 'LIGHT'))
         style = ttk.Style(self)
-        style.configure('KTX.Primary.TButton', background='#207B68',
+        style.configure('KTX.Primary.TButton', background=mau['chinh'],
                         foreground='white', padding=(13, 9),
                         font=('Segoe UI', 10, 'bold'))
         style.map('KTX.Primary.TButton',
-                  background=[('active', '#176352')],
+                  background=[('active', mau['chinh_dam'])],
                   foreground=[('active', 'white')])
-        style.configure('KTX.Light.TButton', padding=(12, 8))
-        style.configure('KTX.Danger.TButton', background='#FFF0ED',
-                        foreground='#A93E38', padding=(12, 8))
-        style.map('KTX.Danger.TButton', background=[('active', '#FAD9D3')])
+        style.configure('KTX.Light.TButton', padding=(12, 8),
+                        background=mau['nut'], foreground=mau['chu'])
+        la_toi = getattr(self.winfo_toplevel(), 'chu_de_hien_tai', 'LIGHT') == 'DARK'
+        style.configure('KTX.Danger.TButton',
+                        background='#673A41' if la_toi else '#FFF0ED',
+                        foreground='#FFFFFF' if la_toi else '#A93E38',
+                        padding=(12, 8))
+        style.map('KTX.Danger.TButton',
+                  background=[('active', '#8A454C' if la_toi else '#FAD9D3')],
+                  foreground=[('active', '#FFFFFF' if la_toi else '#A93E38')])
         style.configure('KTX.Treeview', rowheight=34,
-                        font=('Segoe UI', 10))
-        style.configure('KTX.Treeview.Heading', font=('Segoe UI', 10, 'bold'),
-                        padding=(9, 9), background='#E1F0EB',
-                        foreground='#28473E')
-        style.map('KTX.Treeview', background=[('selected', '#C8E8E0')],
-                  foreground=[('selected', '#18473B')])
+                        font=('Segoe UI', 10),
+                        background=mau['the'], fieldbackground=mau['the'],
+                        foreground=mau['chu'])
+        style.configure('KTX.Treeview.Heading',
+                        font=('Segoe UI', 10, 'bold'), padding=(9, 9),
+                        background=mau['nhat'], foreground=mau['chu'])
+        style.map('KTX.Treeview', background=[('selected', mau['chon'])],
+                  foreground=[('selected', mau['chu'])])
+
+    def cap_nhat_mau(self):
+        """Đổi màu bảng nếu người dùng đổi chủ đề."""
+        self._tao_kieu_nut()
+        if hasattr(self, 'bang'):
+            mau = lay_mau(getattr(self.winfo_toplevel(), 'chu_de_hien_tai', 'LIGHT'))
+            self.bang.tag_configure('chan', background=mau['the'], foreground=mau['chu'])
+            self.bang.tag_configure('le', background=mau['nhat'], foreground=mau['chu'])
 
     def tao_giao_dien(self):
         self._tao_kieu_nut()
@@ -102,7 +121,9 @@ class ManHinhDanhMucCoSo(ttk.Frame):
 
         duoi = ttk.Frame(self)
         duoi.pack(fill='x', pady=(0, 12))
-        nut = [('Xem chi tiết', self.xem_chi_tiet), ('Chỉnh sửa', self.chinh_sua)]
+        nut = [('Xem chi tiết', self.xem_chi_tiet)]
+        if self.CHO_PHEP_SUA:
+            nut.append(('Chỉnh sửa', self.chinh_sua))
         if self.CO_LUU_TRU:
             nut += [('Lưu trữ', self.luu_tru), ('Khôi phục', self.tai_kich_hoat)]
         if self.CHO_PHEP_XOA:
@@ -123,8 +144,7 @@ class ManHinhDanhMucCoSo(ttk.Frame):
         for truong in self.TRUONG:
             self.bang.heading(truong, text=self.ten_truong(truong))
             self.bang.column(truong, width=155, minwidth=105)
-        self.bang.tag_configure('chan', background='#FFFFFF', foreground='#263E37')
-        self.bang.tag_configure('le', background='#EEF7F4', foreground='#263E37')
+        self.cap_nhat_mau()
         cuon_y = ttk.Scrollbar(khung_bang, orient='vertical', command=self.bang.yview)
         cuon_x = ttk.Scrollbar(khung_bang, orient='horizontal', command=self.bang.xview)
         self.bang.configure(yscrollcommand=cuon_y.set, xscrollcommand=cuon_x.set)
@@ -132,7 +152,6 @@ class ManHinhDanhMucCoSo(ttk.Frame):
         cuon_y.grid(row=0, column=1, sticky='ns')
         cuon_x.grid(row=1, column=0, sticky='ew')
         self.bang.bind('<Double-1>', lambda _event: self.xem_chi_tiet())
-
 
     @staticmethod
     def ten_truong(truong):
@@ -198,10 +217,10 @@ class ManHinhDanhMucCoSo(ttk.Frame):
             return
         try:
             obj = self.adapter.lay_theo_ma(self.LOAI, ma,
-                                            lay_luu_tru=self.doc_luu_tru())
+                                         lay_luu_tru=self.doc_luu_tru())
             noidung = '\n'.join(f'{self.ten_truong(t)}: '
-                                  f'{hien_thi(self.lay_gia_tri(obj, t))}'
-                                  for t in self.TRUONG)
+                                f'{hien_thi(self.lay_gia_tri(obj, t))}'
+                                for t in self.TRUONG)
             messagebox.showinfo('Chi tiết', noidung, parent=self.winfo_toplevel())
         except Exception as exc:
             messagebox.showerror('Lỗi', str(exc), parent=self.winfo_toplevel())
@@ -210,12 +229,15 @@ class ManHinhDanhMucCoSo(ttk.Frame):
         self.mo_form()
 
     def chinh_sua(self):
+        if not self.CHO_PHEP_SUA:
+            messagebox.showwarning('Không thể sửa', 'Thực thể này không được chỉnh sửa sau khi tạo.', parent=self.winfo_toplevel())
+            return
         ma = self.lay_ma_chon()
         if ma is None:
             return
         try:
             obj = self.adapter.lay_theo_ma(self.LOAI, ma,
-                                            lay_luu_tru=self.doc_luu_tru())
+                                         lay_luu_tru=self.doc_luu_tru())
             du_lieu = {t: self.lay_gia_tri(obj, t) for t in self.TRUONG}
             self.mo_form(du_lieu, ma)
         except Exception as exc:
@@ -234,45 +256,57 @@ class ManHinhDanhMucCoSo(ttk.Frame):
         """Class con có thể đổi nhãn Combobox thành mã tại đây."""
         return data
 
+    def _la_truong_ma_chinh(self, truong):
+        """Xác định chính xác trường mã chính tự sinh của từng thực thể."""
+        return truong == 'ma'
+
     def _chi_doc(self, truong):
-        if truong == 'ma' or truong in self.TRUONG_CHI_DOC_KHI_SUA:
+        if self._la_truong_ma_chinh(truong) or truong in self.TRUONG_CHI_DOC_KHI_SUA:
             return True
         thuoc_tinh = getattr(self.LOAI, truong, None)
         return isinstance(thuoc_tinh, property) and thuoc_tinh.fset is None
 
     def _chuyen_kieu(self, truong, value):
-        """Dùng kiểu dữ liệu trong constructor (năm -> int, giá -> float...)."""
+        """Chuyển kiểu dữ liệu và báo lỗi bằng tiếng Việt khi nhập sai."""
         if value == '':
             return None
         kieu = self._kieu_truong.get(truong)
         if get_origin(kieu) is not None:
             kieu = next((k for k in get_args(kieu) if k is not type(None)), kieu)
-        if kieu is int:
-            return int(value)
-        if kieu is float:
-            return float(value)
-        if kieu is date:
-            try:
-                return date.fromisoformat(value)
-            except ValueError:
-                return datetime.strptime(value, '%d/%m/%Y').date()
-        if kieu is datetime:
-            return datetime.fromisoformat(value)
-        if kieu is bool:
-            if value.casefold() in ('true', '1', 'có'):
-                return True
-            if value.casefold() in ('false', '0', 'không'):
-                return False
-            raise ValueError(f'{self.ten_truong(truong)}: nhập True hoặc False')
-        if isinstance(kieu, type) and issubclass(kieu, Enum):
-            try:
-                return kieu[value]
-            except KeyError:
-                return kieu(value)
-        return value
+        
+        ten_hien_thi = self.ten_truong(truong)
+        try:
+            if kieu is int:
+                return int(value)
+            if kieu is float:
+                return float(value)
+            if kieu is date:
+                try:
+                    return date.fromisoformat(value)
+                except ValueError:
+                    return datetime.strptime(value, '%d/%m/%Y').date()
+            if kieu is datetime:
+                return datetime.fromisoformat(value)
+            if kieu is bool:
+                if value.casefold() in ('true', '1', 'có'):
+                    return True
+                if value.casefold() in ('false', '0', 'không'):
+                    return False
+                raise ValueError()
+            if isinstance(kieu, type) and issubclass(kieu, Enum):
+                try:
+                    return kieu[value]
+                except KeyError:
+                    return kieu(value)
+            return value
+        except Exception:
+            raise ValueError(f"Dữ liệu ở trường '{ten_hien_thi}' không hợp lệ. Vui lòng nhập đúng định dạng kiểu dữ liệu.")
 
     def mo_form(self, du_lieu=None, ma_cu=None):
         sua = ma_cu is not None
+        if sua and not self.CHO_PHEP_SUA:
+            messagebox.showwarning('Không thể sửa', 'Thực thể này không được chỉnh sửa sau khi tạo.', parent=self.winfo_toplevel())
+            return
         du_lieu = dict(du_lieu or {})
         cua_so = tk.Toplevel(self)
         cua_so.title(('Chỉnh sửa ' if sua else 'Thêm mới ') + (self.TIEU_DE or self.LOAI.__name__))
@@ -306,7 +340,7 @@ class ManHinhDanhMucCoSo(ttk.Frame):
 
         o_nhap = {}
         for truong in self.TRUONG:
-            if truong == 'ma' and not sua:
+            if not sua and (self._la_truong_ma_chinh(truong) or truong in self.TRUONG_CHI_DOC_KHI_TAO):
                 continue
             ttk.Label(form, text=self.ten_truong(truong)).pack(anchor='w', pady=(10, 4))
             o = self.tao_o_nhap(form, truong, du_lieu.get(truong, ''))
@@ -322,15 +356,23 @@ class ManHinhDanhMucCoSo(ttk.Frame):
                 data = self.chuan_hoa_du_lieu_form(data, o_nhap)
                 if sua:
                     data = {k: v for k, v in data.items() if not self._chi_doc(k)}
+                
                 for ten in self.BAT_BUOC:
+                    if not sua and self._la_truong_ma_chinh(ten):
+                        continue
                     if ten in data and not str(data[ten]).strip():
                         raise ValueError(f'Bạn chưa nhập {self.ten_truong(ten)}')
+                
                 data = {ten: self._chuyen_kieu(ten, val) for ten, val in data.items()}
                 if sua:
                     self.adapter.cap_nhat_truong(self.LOAI, ma_cu, **data)
                 else:
-                    data.pop('ma', None)
+                    # Kiểm tra chữ ký __init__ để loại bỏ các trường mã tự sinh rỗng/không hợp lệ
+                    for k in list(data.keys()):
+                        if (self._la_truong_ma_chinh(k) or k == 'ma') and not str(data[k]).strip():
+                            data.pop(k, None)
                     self.adapter.tao_va_them(self.LOAI, **data)
+                
                 cua_so.destroy()
                 self.tai_du_lieu()
                 messagebox.showinfo('Đã lưu', 'Thông tin đã được lưu thành công.',
@@ -367,11 +409,13 @@ class ManHinhDanhMucCoSo(ttk.Frame):
         ma = self.lay_ma_chon()
         if ma is None:
             return
-        if not messagebox.askyesno('Xác nhận xóa', f'Bạn muốn xóa {ma}?',
-                                   parent=self.winfo_toplevel()):
+        if not messagebox.askyesno(
+                'Xác nhận xóa vĩnh viễn',
+                f'Xóa vĩnh viễn mã {ma}?\nThao tác không thể hoàn tác và có thể bị từ chối nếu dữ liệu đang được tham chiếu.',
+                parent=self.winfo_toplevel()):
             return
         try:
-            self.adapter.xoa(self.LOAI, ma)
+            self.adapter.xoa(self.LOAI, ma, ep_xoa=True)
             self.tai_du_lieu()
         except Exception as exc:
             messagebox.showerror('Lỗi xóa', str(exc), parent=self.winfo_toplevel())

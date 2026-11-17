@@ -1,391 +1,164 @@
-﻿
-"""Màn hình cài đặt: 4 chủ đề và thông số hệ thống."""
-
-import copy
-import tkinter as tk
+﻿"""Cài đặt theo CauHinhDong(frozen=True) thực tế của nhóm."""
 from tkinter import ttk, messagebox
+from math import isfinite
 
-from ..dung_chung.mau_sac import lay_mau
+from tien_ich.cau_hinh_dong import CauHinhDong
+from tien_ich.cau_hinh_tinh import CauHinhChuDe
 
 
 class ManHinhCaiDat(ttk.Frame):
-    TRUONG = [
-        ("don_gia_dien", "Đơn giá điện", "đ/kWh"),
-        ("don_gia_nuoc", "Đơn giá nước", "đ/m³"),
-        ("suc_chua_mac_dinh", "Sức chứa mặc định", "người"),
-        ("han_muc_no", "Hạn mức nợ", "đồng"),
+    # (nhãn, thuộc tính CauHinhDong, kiểu dữ liệu, đơn vị)
+    THONG_SO = [
+        ('Đơn giá điện', 'DON_GIA_DIEN', float, 'đ/kWh'),
+        ('Đơn giá nước', 'DON_GIA_NUOC', float, 'đ/m³'),
+        ('Sức chứa phòng mặc định', 'SUC_CHUA_PHONG_MAC_DINH', int, 'người'),
+        ('Hạn mức nợ tối đa', 'SO_TIEN_NO_TOI_DA_CHO_PHEP', float, 'đồng'),
+        ('Hạn đóng tiền điện', 'THOI_HAN_DONG_TIEN_DIEN', int, 'ngày'),
+        ('Tiền phạt quá hạn mỗi ngày', 'TIEN_PHAT_QUA_HAN_NGAY', float, 'đ/ngày'),
     ]
+    CHU_DE_GIAO_DIEN = ('LIGHT', 'GREY', 'DARK', 'BLUE')
 
-    CHU_DE = ("LIGHT", "GREY", "DARK", "BLUE")
-
-    def __init__(self, parent, adapter, doi_chu_de):
+    def __init__(self, parent, adapter, doi_chu_de_callback):
         super().__init__(parent, padding=16)
-
         self.adapter = adapter
-        self.doi_chu_de = doi_chu_de
-        self.cau_hinh = None
-        self.o_nhap = {}
-
+        self.doi_chu_de_callback = doi_chu_de_callback
+        self.o_nhap_ts = {}
         self.tao_giao_dien()
         self.tai_cau_hinh()
 
     def tao_giao_dien(self):
-        # Tiêu đề
-        dau = ttk.Frame(
-            self,
-            style="KTX.Banner.TFrame",
-            padding=16
-        )
-        dau.pack(fill="x", pady=(0, 14))
+        dau = ttk.Frame(self, style='KTX.Banner.TFrame', padding=18)
+        dau.pack(fill='x', pady=(0, 14))
+        ttk.Label(dau, text='CÀI ĐẶT HỆ THỐNG',
+                  style='KTX.BannerTitle.TLabel').pack(anchor='w')
+        ttk.Label(dau, text='Tùy chỉnh chủ đề và thông số quản lý ký túc xá',
+                  style='KTX.BannerSub.TLabel').pack(anchor='w', pady=(5, 0))
 
-        ttk.Label(
-            dau,
-            text="CÀI ĐẶT HỆ THỐNG",
-            style="KTX.BannerTitle.TLabel"
-        ).pack(anchor="w")
-
-        ttk.Label(
-            dau,
-            text="Tùy chỉnh giao diện và các thông số quản lý",
-            style="KTX.BannerSub.TLabel"
-        ).pack(anchor="w", pady=(6, 0))
-
-        # Thanh nút
-        thanh_nut = ttk.Frame(self)
-        thanh_nut.pack(
-            side="bottom",
-            fill="x",
-            pady=(12, 0)
-        )
-
-        ttk.Button(
-            thanh_nut,
-            text="Lấy lại dữ liệu",
-            command=self.tai_cau_hinh
-        ).pack(side="left")
-
-        ttk.Button(
-            thanh_nut,
-            text="Lưu cấu hình",
-            style="KTX.Primary.TButton",
-            command=self.luu
-        ).pack(side="right")
-
-        # Phần chọn chủ đề
-        khung_mau = ttk.LabelFrame(
-            self,
-            text="  Giao diện  ",
-            padding=14
-        )
-        khung_mau.pack(fill="x", pady=(0, 14))
-        khung_mau.columnconfigure(0, weight=1)
-
-        ttk.Label(
-            khung_mau,
-            text="Chủ đề màu sắc"
-        ).grid(row=0, column=0, sticky="w")
-
+        giao_dien = ttk.LabelFrame(self, text='  Giao diện  ', padding=14)
+        giao_dien.pack(fill='x', pady=(0, 12))
+        ttk.Label(giao_dien, text='Chủ đề màu sắc').grid(row=0, column=0, sticky='w', padx=(0, 10))
         self.cbo_chu_de = ttk.Combobox(
-            khung_mau,
-            values=self.CHU_DE,
-            state="readonly",
-            width=26
+            giao_dien, values=self.CHU_DE_GIAO_DIEN, state='readonly', width=18)
+        self.cbo_chu_de.grid(row=0, column=1, sticky='w', padx=6)
+        ttk.Button(giao_dien, text='Áp dụng màu ngay',
+                   command=self.ap_dung_chu_de).grid(row=0, column=2, sticky='w', padx=8)
+
+        tham_so = ttk.LabelFrame(self, text='  Thông số hệ thống  ', padding=14)
+        tham_so.pack(fill='x', pady=(0, 12))
+        tham_so.columnconfigure(0, weight=1)
+        tham_so.columnconfigure(1, weight=1)
+        for i, (nhan, ten, _kieu, don_vi) in enumerate(self.THONG_SO):
+            khung = ttk.Frame(tham_so)
+            khung.grid(row=i // 2, column=i % 2, sticky='ew', padx=8, pady=7)
+            khung.columnconfigure(0, weight=1)
+            ttk.Label(khung, text=f'{nhan} ({don_vi})').grid(row=0, column=0, sticky='w')
+            entry = ttk.Entry(khung)
+            entry.grid(row=1, column=0, sticky='ew', pady=(5, 0))
+            self.o_nhap_ts[ten] = entry
+
+        nut = ttk.Frame(self)
+        nut.pack(fill='x', pady=(4, 0))
+        ttk.Button(nut, text='Lấy lại dữ liệu', command=self.tai_cau_hinh).pack(side='left')
+        ttk.Button(nut, text='Lưu cấu hình', style='KTX.Primary.TButton',
+                   command=self.luu_cau_hinh).pack(side='right')
+
+    @staticmethod
+    def _doc_truong_cau_hinh(cfg: object, truong: str) -> object:
+        """Backend thật dùng thuộc tính IN HOA; mock cũ dùng dict chữ thường."""
+        ten_cu: dict[str, str] = {
+            'SUC_CHUA_PHONG_MAC_DINH': 'suc_chua_mac_dinh',
+            'SO_TIEN_NO_TOI_DA_CHO_PHEP': 'han_muc_no',
+            'THOI_HAN_DONG_TIEN_DIEN': 'thoi_han_dien',
+            'TIEN_PHAT_QUA_HAN_NGAY': 'tien_phat_ngay',
+        }
+        cac_ten: tuple[str, str, str] = (
+            truong, ten_cu.get(truong, truong.lower()), truong.lower()
         )
-        self.cbo_chu_de.grid(
-            row=1,
-            column=0,
-            sticky="ew",
-            pady=8,
-            padx=(0, 10)
-        )
-
-        self.cbo_chu_de.bind(
-            "<<ComboboxSelected>>",
-            self.xem_truoc_mau
-        )
-
-        ttk.Button(
-            khung_mau,
-            text="Áp dụng màu ngay",
-            command=self.ap_dung_mau
-        ).grid(row=1, column=1, sticky="ew")
-
-        # Khung xem trước màu sắc
-        self.khung_xem = tk.Frame(
-            khung_mau,
-            padx=8,
-            pady=8,
-            height=56
-        )
-        self.khung_xem.grid(
-            row=2,
-            column=0,
-            columnspan=2,
-            sticky="ew"
-        )
-        self.khung_xem.pack_propagate(False)
-
-        self.lbl_menu = tk.Label(
-            self.khung_xem,
-            text="Menu",
-            width=13
-        )
-        self.lbl_menu.pack(
-            side="left",
-            fill="both",
-            padx=(0, 5)
-        )
-
-        self.lbl_nen = tk.Label(
-            self.khung_xem,
-            text="Nền giao diện"
-        )
-        self.lbl_nen.pack(
-            side="left",
-            fill="both",
-            expand=True,
-            padx=5
-        )
-
-        self.lbl_nut = tk.Label(
-            self.khung_xem,
-            text="Nút bấm",
-            width=13
-        )
-        self.lbl_nut.pack(
-            side="left",
-            fill="both",
-            padx=(5, 0)
-        )
-
-        ttk.Label(
-            khung_mau,
-            text="Áp dụng màu ngay không lưu cấu hình.",
-            style="KTX.Muted.TLabel"
-        ).grid(
-            row=3,
-            column=0,
-            columnspan=2,
-            sticky="w",
-            pady=(8, 0)
-        )
-
-        # Phần thông số hệ thống
-        khung_so = ttk.LabelFrame(
-            self,
-            text="  Thông số hệ thống  ",
-            padding=14
-        )
-        khung_so.pack(fill="x")
-        khung_so.columnconfigure(1, weight=1)
-
-        for i, (truong, nhan, don_vi) in enumerate(self.TRUONG):
-            ttk.Label(
-                khung_so,
-                text=nhan
-            ).grid(
-                row=i,
-                column=0,
-                sticky="w",
-                pady=7
-            )
-
-            entry = ttk.Entry(khung_so)
-            entry.grid(
-                row=i,
-                column=1,
-                sticky="ew",
-                padx=12,
-                pady=7
-            )
-
-            ttk.Label(
-                khung_so,
-                text=don_vi
-            ).grid(
-                row=i,
-                column=2,
-                sticky="w",
-                pady=7
-            )
-
-            self.o_nhap[truong] = entry
-
-    def xem_truoc_mau(self, event=None):
-        mau = lay_mau(self.cbo_chu_de.get())
-
-        self.khung_xem.configure(bg=mau["vien"])
-
-        self.lbl_menu.configure(
-            bg=mau["menu"],
-            fg=mau["chu"]
-        )
-
-        self.lbl_nen.configure(
-            bg=mau["nen"],
-            fg=mau["chu"]
-        )
-
-        self.lbl_nut.configure(
-            bg=mau["chinh"],
-            fg=mau["trang"]
-        )
-
-    def ap_dung_mau(self):
-        chu_de = self.cbo_chu_de.get()
-
-        if chu_de not in self.CHU_DE:
-            messagebox.showwarning(
-                "Chủ đề",
-                "Hãy chọn một chủ đề.",
-                parent=self
-            )
-            return
-
-        self.doi_chu_de(chu_de)
+        if isinstance(cfg, dict):
+            for ten in cac_ten:
+                if ten in cfg:
+                    return cfg[ten]
+        else:
+            for ten in cac_ten:
+                if hasattr(cfg, ten):
+                    return getattr(cfg, ten)
+        # Mock không có đầy đủ thông số; dùng giá trị mặc định đã khai báo
+        # trong CauHinhDong thật, không tự tạo số ngẫu nhiên.
+        return getattr(CauHinhDong(), truong)
 
     def tai_cau_hinh(self):
         try:
-            self.cau_hinh = self.adapter.doc_cau_hinh()
-            cfg = self.cau_hinh
+            cfg = self.adapter.doc_cau_hinh()
+            chu_de = self._doc_truong_cau_hinh(cfg, 'CHU_DE')
+            ten = str(getattr(chu_de, 'name', chu_de)).split('.')[-1].upper()
+            if ten == 'DEFAULT':
+                ten = 'LIGHT'
+            self.cbo_chu_de.set(ten if ten in self.CHU_DE_GIAO_DIEN else 'LIGHT')
+            for _nhan, truong, _kieu, _don_vi in self.THONG_SO:
+                entry = self.o_nhap_ts[truong]
+                entry.delete(0, 'end')
+                entry.insert(0, str(self._doc_truong_cau_hinh(cfg, truong)))
+        except Exception as exc:
+            messagebox.showerror('Lỗi tải cấu hình', str(exc), parent=self.winfo_toplevel())
 
-            if isinstance(cfg, dict):
-                gia_tri = lambda ten, mac_dinh="": cfg.get(
-                    ten, mac_dinh
-                )
-            else:
-                gia_tri = lambda ten, mac_dinh="": getattr(
-                    cfg, ten, mac_dinh
-                )
+    def ap_dung_chu_de(self):
+        chu_de = self.cbo_chu_de.get().strip()
+        if chu_de not in self.CHU_DE_GIAO_DIEN:
+            messagebox.showwarning('Chủ đề', 'Vui lòng chọn chủ đề màu.', parent=self.winfo_toplevel())
+            return
+        self.doi_chu_de_callback(chu_de)
 
-            chu_de = str(
-                gia_tri("chu_de", "LIGHT")
-            ).upper()
-
-            self.cbo_chu_de.set(
-                chu_de if chu_de in self.CHU_DE else "LIGHT"
-            )
-
-            self.xem_truoc_mau()
-
-            for truong, entry in self.o_nhap.items():
-                entry.delete(0, tk.END)
-
-                value = gia_tri(truong, "")
-                entry.insert(
-                    0,
-                    "" if value is None else str(value)
-                )
-
-        except Exception as e:
-            messagebox.showerror(
-                "Lỗi đọc cấu hình",
-                str(e),
-                parent=self
-            )
-
-    def tao_cau_hinh_moi(self, data):
-        cfg = self.cau_hinh
-
-        if cfg is None:
-            raise ValueError(
-                "Chưa tải được cấu hình từ hệ thống."
-            )
-
-        # Nếu cấu hình là dictionary
-        if isinstance(cfg, dict):
-            return {**cfg, **data}
-
-        # Nếu cấu hình là đối tượng có thể khởi tạo
-        # bằng các thuộc tính hiện tại
-        try:
-            return type(cfg)(
-                **{**vars(cfg), **data}
-            )
-
-        except (TypeError, AttributeError):
-            # Nếu là đối tượng thông thường
-            moi = copy.copy(cfg)
-
-            for ten, value in data.items():
-                setattr(moi, ten, value)
-
-            return moi
-
-    def luu(self):
-        chu_de = self.cbo_chu_de.get()
-
-        if chu_de not in self.CHU_DE:
-            messagebox.showwarning(
-                "Chủ đề",
-                "Hãy chọn một chủ đề.",
-                parent=self
-            )
+    def luu_cau_hinh(self):
+        chon = self.cbo_chu_de.get().strip()
+        if chon not in self.CHU_DE_GIAO_DIEN:
+            messagebox.showwarning('Chủ đề', 'Vui lòng chọn chủ đề màu.', parent=self.winfo_toplevel())
             return
 
-        try:
-            data = {}
-
-            for truong, entry in self.o_nhap.items():
-                value = entry.get().strip()
-
-                if not value:
-                    raise ValueError(
-                        f"Vui lòng nhập {truong.replace('_', ' ')}."
-                    )
-
-                if truong == "suc_chua_mac_dinh":
-                    so = int(value)
-
-                    if so <= 0:
-                        raise ValueError(
-                            "Sức chứa mặc định phải lớn hơn 0."
-                        )
-                else:
-                    so = float(value)
-
-                    if so < 0:
-                        raise ValueError(
-                            "Đơn giá và hạn mức nợ không được âm."
-                        )
-
-                data[truong] = so
-
-            data["chu_de"] = chu_de
-
-            # Tạo cấu hình mới
-            moi = self.tao_cau_hinh_moi(data)
-
-            # Xác nhận trước khi lưu
-            if not messagebox.askyesno(
-                "Xác nhận",
-                "Bạn có muốn lưu cấu hình mới?",
-                parent=self
-            ):
-                return
-
-            # Gọi Adapter mới
-            self.adapter.cap_nhat_cau_hinh(moi)
-
-            self.cau_hinh = moi
-            self.doi_chu_de(chu_de)
-
-            messagebox.showinfo(
-                "Thành công",
-                "Đã lưu cấu hình.",
-                parent=self
-            )
-
-        except ValueError as e:
+        cac_chu_de_backend = {loai.name: loai for loai in CauHinhChuDe}
+        if chon == 'LIGHT' and 'LIGHT' not in cac_chu_de_backend:
+            chu_de = CauHinhChuDe.DEFAULT
+        elif chon in cac_chu_de_backend:
+            chu_de = cac_chu_de_backend[chon]
+        else:
             messagebox.showwarning(
-                "Dữ liệu không hợp lệ",
-                str(e),
-                parent=self
-            )
+                'Không thể lưu chủ đề',
+                f'Backend chưa khai báo CauHinhChuDe.{chon}. '
+                'Có thể áp dụng màu ngay, nhưng chưa thể lưu màu này xuống cấu hình.',
+                parent=self.winfo_toplevel())
+            return
 
-        except Exception as e:
-            messagebox.showerror(
-                "Lỗi lưu cấu hình",
-                str(e),
-                parent=self
+        # Chỉ lưu thông số dạng số; chủ đề enum đã nằm trong biến chu_de.
+        du_lieu: dict[str, float | int] = {}
+        for nhan, ten, kieu, _don_vi in self.THONG_SO:
+            chuoi = self.o_nhap_ts[ten].get().strip()
+            if not chuoi:
+                messagebox.showwarning('Thiếu thông số', f'Chưa nhập: {nhan}', parent=self.winfo_toplevel())
+                return
+            try:
+                value = kieu(chuoi)
+            except ValueError:
+                messagebox.showwarning('Thông số không hợp lệ', f'{nhan} phải là số.', parent=self.winfo_toplevel())
+                return
+            if not isfinite(float(value)) or ((ten in ('SUC_CHUA_PHONG_MAC_DINH', 'THOI_HAN_DONG_TIEN_DIEN') and value <= 0) or value < 0):
+                messagebox.showwarning('Thông số không hợp lệ', f'{nhan} không hợp lệ.', parent=self.winfo_toplevel())
+                return
+            du_lieu[ten] = value
+
+        if not messagebox.askyesno('Xác nhận', 'Lưu cấu hình hệ thống?', parent=self.winfo_toplevel()):
+            return
+        try:
+            # CauHinhDong là frozen dataclass: phải tạo một đối tượng mới.
+            cfg_moi = CauHinhDong(
+                CHU_DE=chu_de,
+                DON_GIA_DIEN=du_lieu['DON_GIA_DIEN'],
+                DON_GIA_NUOC=du_lieu['DON_GIA_NUOC'],
+                SUC_CHUA_PHONG_MAC_DINH=int(du_lieu['SUC_CHUA_PHONG_MAC_DINH']),
+                SO_TIEN_NO_TOI_DA_CHO_PHEP=du_lieu['SO_TIEN_NO_TOI_DA_CHO_PHEP'],
+                THOI_HAN_DONG_TIEN_DIEN=int(du_lieu['THOI_HAN_DONG_TIEN_DIEN']),
+                TIEN_PHAT_QUA_HAN_NGAY=du_lieu['TIEN_PHAT_QUA_HAN_NGAY'],
             )
+            self.adapter.cap_nhat_cau_hinh(cfg_moi)
+            self.doi_chu_de_callback(chon)
+            messagebox.showinfo('Đã lưu', 'Cấu hình hệ thống đã được lưu.', parent=self.winfo_toplevel())
+        except Exception as exc:
+            messagebox.showerror('Không thể lưu', str(exc), parent=self.winfo_toplevel())

@@ -1,23 +1,27 @@
-from thuc_the.tai_chinh import HoaDonThang
-
+"""Danh mục hóa đơn tháng: dùng ThangNam, mã HDT tự sinh ở backend."""
+from thuc_the.tai_chinh import HoaDonThang, ThangNam
 from .danh_muc_co_so import ManHinhDanhMucCoSo
 
 
 class ManHinhHoaDonThang(ManHinhDanhMucCoSo):
     LOAI = HoaDonThang
-
+    TIEU_DE = 'Quản lý hóa đơn tháng'
+    MO_TA = 'Tháng năm nhập dạng YYYY-MM; mã hóa đơn sinh tự động.'
     TRUONG = [
-        "ma_hoa_don",
-        "ma_hop_dong",
-        "thang",
-        "nam",
-        "so_tien",
-        "trang_thai"
+        'ma', 'thang_nam', 'dien_cu', 'dien_moi', 'don_gia_dien',
+        'nuoc_cu', 'nuoc_moi', 'don_gia_nuoc', 'phong', 'han_chot', 'trang_thai',
     ]
-
     BAT_BUOC = [
-        "ma_hoa_don",
-        "ma_hop_dong",
-        "thang",
-        "nam"
+        'thang_nam', 'dien_cu', 'dien_moi', 'don_gia_dien',
+        'nuoc_cu', 'nuoc_moi', 'don_gia_nuoc', 'phong', 'han_chot',
     ]
+    TRUONG_CHI_DOC_KHI_TAO = {'trang_thai'}
+    CHO_PHEP_SUA = False  # DieuPhoiKTX cấm cập nhật hóa đơn sau khi tạo
+
+    def _chuyen_kieu(self, truong, value):
+        if truong == 'thang_nam':
+            try:
+                return ThangNam.tu_chuoi(value)
+            except (TypeError, ValueError) as exc:
+                raise ValueError('Tháng năm phải có dạng YYYY-MM (ví dụ 2026-11).') from exc
+        return super()._chuyen_kieu(truong, value)

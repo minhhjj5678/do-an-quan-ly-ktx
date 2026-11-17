@@ -1,20 +1,19 @@
-﻿import tkinter as tk
+﻿
+import tkinter as tk
+from threading import Thread
 from tkinter import ttk, messagebox
 
 from .xac_thuc.dang_nhap import ManHinhDangNhap
 from .xac_thuc.doi_mat_khau import ManHinhDoiMatKhau
-from .xac_thuc.quan_tri_tai_khoan import ManHinhQuanTriTaiKhoan
 
 from .danh_muc.sinh_vien import ManHinhSinhVien
 from .danh_muc.phong import ManHinhPhong
-from .danh_muc.toa_nha import ManHinhToaNha
+from .danh_muc.toa_nha import ManHinhToaNha 
 from .danh_muc.hop_dong import ManHinhHopDong
 from .danh_muc.hoa_don_thang import ManHinhHoaDonThang
-#from .danh_muc.dich_vu_them import ManHinhDichVuThem
 from .danh_muc.vi_pham import ManHinhViPham
 from .danh_muc.tai_khoan import ManHinhTaiKhoan
 
-from .nghiep_vu.nghiep_vu import ManHinhNghiepVu
 from .thong_ke.thong_ke import ManHinhThongKe
 from .cai_dat.cai_dat import ManHinhCaiDat
 from .dung_chung.adapter import Adapter
@@ -47,22 +46,34 @@ class App(tk.Tk):
         self.doi_chu_de("LIGHT")
         try:
             cau_hinh = self.adapter.doc_cau_hinh()
-            chu_de = (cau_hinh.get("chu_de", "LIGHT")
-                      if isinstance(cau_hinh, dict)
-                      else getattr(cau_hinh, "chu_de", "LIGHT"))
-            self.doi_chu_de(str(chu_de))
+            # CauHinhDong dùng CHU_DE: Enum, không phải 'chu_de' chữ thường.
+            chu_de = getattr(cau_hinh, 'CHU_DE', None)
+            ten = getattr(chu_de, 'name', 'DEFAULT').upper()
+            self.doi_chu_de(ten if ten in ('LIGHT', 'GREY', 'DARK', 'BLUE') else 'LIGHT')
         except Exception:
             pass
         if self.loi_nap_file:
             self.after(100, lambda: messagebox.showwarning(
                 "Dữ liệu chưa sẵn sàng", self.loi_nap_file, parent=self))
 
-        # Con lăn hoạt động ở mọi widget bên trong vùng nội dung.
+        # Cuộn bằng chuột ở menu hoặc vùng nội dung (đăng ký đúng một lần).
         self.bind_all("<MouseWheel>", self._xu_ly_cuon_chuot, add="+")
         self.bind_all("<Button-4>", self._xu_ly_cuon_chuot, add="+")
         self.bind_all("<Button-5>", self._xu_ly_cuon_chuot, add="+")
+
         self.protocol("WM_DELETE_WINDOW", self.xac_nhan_thoat)
         self.hien_thi_dang_nhap()
+        # Quy định của giao thức: nạp dữ liệu địa lý ở luồng phụ.
+        self.loi_nap_dia_ly = None
+        if self.loi_nap_file is None:
+            Thread(target=self._nap_dia_ly_ngam, daemon=True).start()
+
+    def _nap_dia_ly_ngam(self):
+        try:
+            self.adapter.nap_du_lieu_api()
+        except Exception as exc:
+            # Không truy cập Tkinter từ luồng phụ.
+            self.loi_nap_dia_ly = str(exc)
 
     def xoa_noi_dung(self):
         for widget in self.winfo_children():
@@ -110,7 +121,7 @@ class App(tk.Tk):
         self.tao_menu()
         self.tao_khu_vuc_noi_dung()
         self.hien_thi_chao_mung()
-        self.after(60, self._cap_nhat_thanh_cuon_trang)
+        self.after_idle(self._cap_nhat_thanh_cuon_trang)
 
     def tao_menu(self):
         ttk.Label(
@@ -131,6 +142,30 @@ class App(tk.Tk):
             style="SidebarSubtitle.TLabel"
         ).pack(fill="x", padx=14, pady=(0, 16))
 
+        # Đặt nút cố định phía dưới TRƯỚC vùng cuộn để không bị che mất.
+        khung_duoi = ttk.Frame(
+            self.menu,
+            style="Sidebar.TFrame",
+            padding=12
+        )
+        khung_duoi.pack(side="bottom", fill="x")
+
+        ttk.Separator(
+            khung_duoi
+        ).pack(fill="x", pady=(0, 12))
+
+        ttk.Button(
+            khung_duoi,
+            text="Đổi mật khẩu",
+            command=self.doi_mat_khau
+        ).pack(fill="x", pady=4)
+
+        ttk.Button(
+            khung_duoi,
+            text="Đăng xuất",
+            command=self.dang_xuat
+        ).pack(fill="x", pady=4)
+
         # Dùng Canvas để menu cuộn được khi cửa sổ thấp
         khung_cuon = ttk.Frame(
             self.menu,
@@ -144,14 +179,13 @@ class App(tk.Tk):
             bd=0,
             bg=self.mau_menu
         )
+        self.canvas_menu = canvas
         scrollbar = ttk.Scrollbar(
             khung_cuon,
             orient="vertical",
             command=canvas.yview,
             style="Sidebar.Vertical.TScrollbar"
         )
-
-        self.canvas_menu = canvas
 
         danh_sach_nut = ttk.Frame(
             canvas,
@@ -196,19 +230,14 @@ class App(tk.Tk):
             ("Tòa nhà", ManHinhToaNha),
             ("Hợp đồng", ManHinhHopDong),
             ("Hóa đơn tháng", ManHinhHoaDonThang),
-            #("Dịch vụ thêm", ManHinhDichVuThem),
             ("Vi phạm", ManHinhViPham)
         ]
 
-        if self.adapter.la_admin():
-            danh_sach.extend([
-                ("Tài khoản", ManHinhTaiKhoan),
-                ("Quản trị tài khoản",
-                 ManHinhQuanTriTaiKhoan)
-            ])
+        # Tài khoản là nơi tập trung phần đặt lại mật khẩu (dành cho quản trị)
+        # và các thao tác nghiệp vụ (dành cho mọi vai trò).
+        danh_sach.append(("Tài khoản", ManHinhTaiKhoan))
 
         danh_sach.extend([
-            ("Nghiệp vụ", ManHinhNghiepVu),
             ("Thống kê", ManHinhThongKe),
             ("Cài đặt", ManHinhCaiDat)
         ])
@@ -227,29 +256,6 @@ class App(tk.Tk):
                 pady=3
             )
             self.nut_menu[ten] = nut
-
-        khung_duoi = ttk.Frame(
-            self.menu,
-            style="Sidebar.TFrame",
-            padding=12
-        )
-        khung_duoi.pack(side="bottom", fill="x")
-
-        ttk.Separator(
-            khung_duoi
-        ).pack(fill="x", pady=(0, 12))
-
-        ttk.Button(
-            khung_duoi,
-            text="Đổi mật khẩu",
-            command=self.doi_mat_khau
-        ).pack(fill="x", pady=4)
-
-        ttk.Button(
-            khung_duoi,
-            text="Đăng xuất",
-            command=self.dang_xuat
-        ).pack(fill="x", pady=4)
 
     def tao_khu_vuc_noi_dung(self):
         thanh_tieu_de = ttk.Frame(
@@ -273,36 +279,40 @@ class App(tk.Tk):
             text="HỆ THỐNG QUẢN LÝ KÝ TÚC XÁ"
         ).pack(side="right")
 
-        # Không đặt Separator cùng ô grid với thanh tiêu đề.
-
-        # Thanh cuộn CHUNG cho mọi màn hình nằm bên phải.
-        # Các bảng Treeview / thẻ Phòng vẫn có thanh cuộn riêng để xem dữ liệu.
-        vung_cuon = ttk.Frame(self.khu_vuc_phai)
-        vung_cuon.grid(row=1, column=0, sticky="nsew")
-        vung_cuon.columnconfigure(0, weight=1)
-        vung_cuon.rowconfigure(0, weight=1)
+        # Vùng nội dung cuộn chung cho Thống kê, Cài đặt, các danh mục...
+        khung_cuon = ttk.Frame(self.khu_vuc_phai)
+        khung_cuon.grid(row=1, column=0, sticky="nsew")
+        khung_cuon.rowconfigure(0, weight=1)
+        khung_cuon.columnconfigure(0, weight=1)
 
         self.canvas_noi_dung = tk.Canvas(
-            vung_cuon, bd=0, highlightthickness=0,
-            bg=lay_mau(self.chu_de_hien_tai)["nen"]
+            khung_cuon,
+            bg=lay_mau(self.chu_de_hien_tai)["nen"],
+            highlightthickness=0,
+            bd=0
         )
-        self.thanh_cuon_trang = ttk.Scrollbar(
-            vung_cuon, orient="vertical",
+        cuon_trang = ttk.Scrollbar(
+            khung_cuon,
+            orient="vertical",
             command=self.canvas_noi_dung.yview,
             style="Content.Vertical.TScrollbar"
         )
-        self.canvas_noi_dung.configure(
-            yscrollcommand=self.thanh_cuon_trang.set
-        )
+        self.canvas_noi_dung.configure(yscrollcommand=cuon_trang.set)
         self.canvas_noi_dung.grid(row=0, column=0, sticky="nsew")
-        self.thanh_cuon_trang.grid(row=0, column=1, sticky="ns")
+        cuon_trang.grid(row=0, column=1, sticky="ns")
 
+        # Màn hình con vẫn nhận self.noi_dung như trước, không cần sửa class.
         self.noi_dung = ttk.Frame(self.canvas_noi_dung, padding=16)
         self._id_noi_dung = self.canvas_noi_dung.create_window(
             (0, 0), window=self.noi_dung, anchor="nw"
         )
-        self.canvas_noi_dung.bind("<Configure>", self._cap_nhat_thanh_cuon_trang)
-        self.noi_dung.bind("<Configure>", self._cap_nhat_thanh_cuon_trang)
+        self._kich_thuoc_noi_dung = None
+        self.canvas_noi_dung.bind(
+            "<Configure>", self._cap_nhat_thanh_cuon_trang
+        )
+        self.noi_dung.bind(
+            "<Configure>", self._cap_nhat_thanh_cuon_trang
+        )
 
         thanh_trang_thai = ttk.Frame(
             self.khu_vuc_phai,
@@ -325,64 +335,72 @@ class App(tk.Tk):
         ).pack(side="right")
 
     def _cap_nhat_thanh_cuon_trang(self, event=None):
-        """Giữ nội dung rộng bằng cửa sổ; cho cuộn nếu nội dung cao hơn."""
+        """Giữ trang vừa chiều ngang; cuộn dọc nếu nội dung dài."""
         if not hasattr(self, "canvas_noi_dung"):
             return
         canvas = self.canvas_noi_dung
         if not canvas.winfo_exists():
             return
+
+        # Đảm bảo Tkinter đã tính kích thước yêu cầu của màn hình con.
+        self.noi_dung.update_idletasks()
         rong = max(canvas.winfo_width(), 1)
         cao = max(canvas.winfo_height(), self.noi_dung.winfo_reqheight())
-        canvas.itemconfigure(self._id_noi_dung, width=rong, height=cao)
-        canvas.configure(scrollregion=canvas.bbox("all"))
+        kich_thuoc = (rong, cao)
+        if self._kich_thuoc_noi_dung != kich_thuoc:
+            self._kich_thuoc_noi_dung = kich_thuoc
+            canvas.itemconfigure(self._id_noi_dung, width=rong, height=cao)
+        canvas.configure(scrollregion=(0, 0, rong, cao))
 
     @staticmethod
     def _nam_trong(widget, cha):
-        """Kiểm tra widget nằm trong vùng giao diện cha hay không."""
         while widget is not None:
             if widget is cha:
                 return True
-            widget = getattr(widget, "master", None)
+            widget = widget.master
         return False
 
     def _xu_ly_cuon_chuot(self, event):
-        """Cuộn đúng nơi đang trỏ chuột: menu, trang, hoặc bảng/phòng."""
+        """Cuộn menu hoặc trang theo vị trí chuột, không cướp cuộn của bảng."""
         try:
             if event.widget.winfo_toplevel() is not self:
-                return  # Không ảnh hưởng các cửa sổ Toplevel
+                return  # Không can thiệp Toplevel đổi mật khẩu
         except tk.TclError:
             return
 
-        buoc = (-1 if event.delta > 0 else 1) if getattr(event, "delta", 0) else (
-            -1 if getattr(event, "num", 0) == 4 else 1)
+        delta = getattr(event, "delta", 0)
+        if delta:
+            buoc = -1 if delta > 0 else 1
+        else:
+            buoc = -1 if getattr(event, "num", 0) == 4 else 1
 
-        if hasattr(self, "canvas_menu") and self._nam_trong(event.widget, self.menu):
-            self.canvas_menu.yview_scroll(buoc, "units")
-            return "break"
+        if hasattr(self, "canvas_menu") and self.canvas_menu.winfo_exists():
+            if self._nam_trong(event.widget, self.menu):
+                self.canvas_menu.yview_scroll(buoc * 2, "units")
+                return "break"
 
-        if not hasattr(self, "noi_dung"):
+        if not hasattr(self, "canvas_noi_dung"):
             return
-        if event.widget is self.canvas_noi_dung:
-            self.canvas_noi_dung.yview_scroll(buoc, "units")
-            return "break"
-        if not self._nam_trong(event.widget, self.noi_dung):
+        if not self.canvas_noi_dung.winfo_exists():
+            return
+        if not self._nam_trong(event.widget, self.khu_vuc_phai):
             return
 
+        # Treeview/Text/Listbox có cơ chế cuộn dữ liệu riêng.
         widget = event.widget
-        while widget is not self.noi_dung:
-            # Chỉ cuộn bảng hoặc Canvas con khi chúng THỰC SỰ có dữ liệu tràn.
+        while widget is not None and widget is not self.khu_vuc_phai:
             if isinstance(widget, (ttk.Treeview, tk.Text, tk.Listbox)):
                 dau, cuoi = widget.yview()
                 if cuoi - dau < 0.999:
-                    return  # Tkinter có sẵn hành vi cuộn của các widget này
+                    return
             if isinstance(widget, tk.Canvas) and widget is not self.canvas_noi_dung:
                 dau, cuoi = widget.yview()
                 if cuoi - dau < 0.999:
-                    widget.yview_scroll(buoc, "units")
+                    widget.yview_scroll(buoc * 2, "units")
                     return "break"
             widget = widget.master
 
-        self.canvas_noi_dung.yview_scroll(buoc, "units")
+        self.canvas_noi_dung.yview_scroll(buoc * 2, "units")
         return "break"
 
     def hien_thi_chao_mung(self):
@@ -424,7 +442,6 @@ class App(tk.Tk):
             man_hinh.pack(fill="both", expand=True)
             self.canvas_noi_dung.yview_moveto(0)
             self.after_idle(self._cap_nhat_thanh_cuon_trang)
-            self.after(60, self._cap_nhat_thanh_cuon_trang)
 
             for ten_nut, nut in self.nut_menu.items():
                 nut.configure(
@@ -515,12 +532,6 @@ class App(tk.Tk):
         st.configure('KTX.Treeview.Heading', background=mau['nhat'],
                      foreground=mau['chu'], padding=8,
                      font=('Segoe UI', 10, 'bold'))
-        st.configure('Sidebar.Vertical.TScrollbar',
-                     background=mau['chinh'], troughcolor=mau['menu'],
-                     bordercolor=mau['vien'], arrowcolor=mau['chu'], width=14)
-        st.configure('Content.Vertical.TScrollbar',
-                     background=mau['chinh'], troughcolor=mau['nen'],
-                     bordercolor=mau['vien'], arrowcolor=mau['chu'], width=14)
         st.configure('Sidebar.TFrame', background=mau['menu'])
         st.configure('SidebarTitle.TLabel', background=mau['menu'],
                      foreground=mau['chu'], font=('Segoe UI', 17, 'bold'))
@@ -556,8 +567,16 @@ class App(tk.Tk):
         st.configure('KTX.Danger.TButton', background='#FFF0ED',
                      foreground='#A93E38', padding=(12, 8))
 
-        if hasattr(self, "canvas_noi_dung") and self.canvas_noi_dung.winfo_exists():
-            self.canvas_noi_dung.configure(bg=mau["nen"])
+        # Hai thanh cuộn hiển thị rõ trên LIGHT/GREY/DARK/BLUE.
+        st.configure('Sidebar.Vertical.TScrollbar',
+                     background=mau['chinh'], troughcolor=mau['menu'],
+                     arrowcolor=mau['chu'])
+        st.configure('Content.Vertical.TScrollbar',
+                     background=mau['chinh'], troughcolor=mau['nhat'],
+                     arrowcolor=mau['chu'])
+
+        if hasattr(self, 'canvas_noi_dung') and self.canvas_noi_dung.winfo_exists():
+            self.canvas_noi_dung.configure(bg=mau['nen'])
 
         # Canvas menu là widget tk, nên cập nhật màu riêng.
         if hasattr(self, 'menu') and self.menu.winfo_exists():

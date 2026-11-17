@@ -9,7 +9,7 @@ from ..dung_chung.ho_tro import hien_thi
 class ManHinhPhong(ManHinhDanhMucCoSo):
     LOAI = Phong
     CO_LUU_TRU = True
-    TRUONG = ['ma', 'ten', 'suc_chua', 'gia_phong', 'toa_nha', 'tang']
+    TRUONG = ['ten', 'suc_chua', 'gia_phong', 'toa_nha', 'tang']
     BAT_BUOC = ['ten', 'suc_chua', 'gia_phong', 'toa_nha', 'tang']
     TRUONG_CHI_DOC_KHI_SUA = {'toa_nha', 'tang'}
 
@@ -103,11 +103,9 @@ class ManHinhPhong(ManHinhDanhMucCoSo):
         self.khung_the.bind('<Configure>', lambda _e: self.canvas.configure(
             scrollregion=self.canvas.bbox('all')))
         self.canvas.bind('<Configure>', self._co_gian_the)
-        self.canvas.bind('<MouseWheel>', lambda e: self.canvas.yview_scroll(
-            -int(e.delta / 120), 'units'))
+        # Sự kiện cuộn do App phân phối, tránh cuộn hai lần.
 
     def _tao_style(self):
-        """Bảng màu cho card dùng Tkinter thuần, không lệ thuộc theme ttk."""
         style = ttk.Style(self)
         self._mau_nen = style.lookup('TFrame', 'background') or '#F4F6FA'
         try:
@@ -117,7 +115,7 @@ class ManHinhPhong(ManHinhDanhMucCoSo):
             self._toi = False
 
         if self._toi:
-            self._mau_the = '#303F52'   # Nền card khi dùng DARK
+            self._mau_the = '#303F52'
             self._mau_vien = '#4C637D'
             self._mau_chon = '#32C9A8'
             self._mau_chu = '#F3F7FF'
@@ -126,7 +124,7 @@ class ManHinhPhong(ManHinhDanhMucCoSo):
                 '#2B405C', '#294B44', '#403958', '#4B4031'
             )
         else:
-            self._mau_the = '#EAF4FF'   # Nền xanh nhạt của các card
+            self._mau_the = '#EAF4FF'
             self._mau_vien = '#BAD6F2'
             self._mau_chon = '#0D9488'
             self._mau_chu = '#23354C'
@@ -224,7 +222,6 @@ class ManHinhPhong(ManHinhDanhMucCoSo):
 
     def _tao_the_phong(self, p):
         ma = str(p.ma)
-        # tk.Frame đảm bảo nền/viền luôn hiện rõ ngay cả khi đổi theme.
         the = tk.Frame(
             self.khung_the, bg=self._mau_the,
             padx=14, pady=14,
@@ -262,12 +259,15 @@ class ManHinhPhong(ManHinhDanhMucCoSo):
             nut, text='Sửa',
             command=lambda m=ma: self._chay_cho_phong(m, self.chinh_sua)
         ).pack(side='left', expand=True, fill='x', padx=(0, 4))
+        
         nut_them = ttk.Menubutton(nut, text='⋯', width=3)
         menu = tk.Menu(nut_them, tearoff=0)
+        
+        # Gọi tường minh từ ManHinhDanhMucCoSo để khắc phục triệt để cảnh báo Pylance
         for ten, ham in (
             ('Lưu trữ', self.luu_tru),
-            ('Tái kích hoạt', self.tai_kich_hoat),
-            ('Xóa', self.xoa)
+            ('Tái kích hoạt', lambda: ManHinhDanhMucCoSo.tai_kich_hoat(self)),
+            ('Xóa', lambda: ManHinhDanhMucCoSo.xoa(self))
         ):
             menu.add_command(
                 label=ten,
@@ -275,6 +275,7 @@ class ManHinhPhong(ManHinhDanhMucCoSo):
             )
         nut_them.configure(menu=menu)
         nut_them.pack(side='right')
+        
         for w in (the, *nhan):
             w.bind('<Button-1>', lambda _e, m=ma: self._chon_the(m))
         return the, ma
