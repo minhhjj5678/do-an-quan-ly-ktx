@@ -74,3 +74,46 @@ def chuyen_kieu(truong, gia_tri):
                   'don_gia_nuoc', 'gia_phong', 'han_muc_no'):
         return float(value)
     return value
+
+
+def gan_goi_y_combobox(o_chon, danh_sach: dict[str, str]):
+    """Gợi ý tên trong Combobox khi gõ; khi lưu, màn hình đổi nhãn thành mã.
+
+    danh_sach: {"Tên hiển thị (Mã)": "Mã"}. Không tự cho phép nhập mã tự do.
+    """
+    import unicodedata
+    from difflib import SequenceMatcher
+
+    def chuan_hoa(chuoi: str) -> str:
+        chuoi = unicodedata.normalize('NFD', chuoi.casefold())
+        return ''.join(k for k in chuoi if unicodedata.category(k) != 'Mn').replace('đ', 'd')
+
+    def loc_goi_y():
+        tu = chuan_hoa(o_chon.get().strip())
+        if not tu or o_chon.get() in danh_sach:
+            ket_qua = list(danh_sach)
+        else:
+            khop = [ten for ten in danh_sach if tu in chuan_hoa(ten)]
+            gan = [ten for ten in danh_sach if ten not in khop and
+                   any(SequenceMatcher(None, tu, tu_don).ratio() >= 0.65
+                       for tu_don in chuan_hoa(ten).replace('(', ' ').replace(')', ' ').split())]
+            ket_qua = khop + gan
+        o_chon.configure(values=ket_qua)
+        return ket_qua
+
+    def khi_go(_event):
+        if _event.keysym in ('Up', 'Down', 'Return', 'Escape', 'Tab', 'Left', 'Right'):
+            return
+        ket_qua = loc_goi_y()
+        if ket_qua and o_chon.winfo_exists() and o_chon.focus_get() == o_chon:
+            def mo_goi_y():
+                try:
+                    if o_chon.winfo_exists() and o_chon.focus_get() == o_chon:
+                        o_chon.tk.call('ttk::combobox::Post', str(o_chon))
+                except Exception:
+                    pass
+            o_chon.after_idle(mo_goi_y)
+
+    o_chon.configure(values=list(danh_sach), postcommand=loc_goi_y)
+    o_chon.bind('<KeyRelease>', khi_go, add='+')
+    return danh_sach

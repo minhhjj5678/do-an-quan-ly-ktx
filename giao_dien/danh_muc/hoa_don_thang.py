@@ -4,9 +4,10 @@ from .danh_muc_co_so import ManHinhDanhMucCoSo
 
 
 class ManHinhHoaDonThang(ManHinhDanhMucCoSo):
+    NGHIEP_VU_CHI_TIET = (('Thanh toán hóa đơn', 'thanh_toan_hoa_don_thang'),)
     LOAI = HoaDonThang
     TIEU_DE = 'Quản lý hóa đơn tháng'
-    MO_TA = 'Tháng năm nhập dạng YYYY-MM; mã hóa đơn sinh tự động.'
+    MO_TA = 'Tháng năm YYYY-MM; chọn Chi tiết hóa đơn để thanh toán.'
     TRUONG = [
         'ma', 'thang_nam', 'dien_cu', 'dien_moi', 'don_gia_dien',
         'nuoc_cu', 'nuoc_moi', 'don_gia_nuoc', 'phong', 'han_chot', 'trang_thai',

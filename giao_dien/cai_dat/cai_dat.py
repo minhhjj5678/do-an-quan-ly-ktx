@@ -23,6 +23,7 @@ class ManHinhCaiDat(ttk.Frame):
         self.adapter = adapter
         self.doi_chu_de_callback = doi_chu_de_callback
         self.o_nhap_ts = {}
+        self.chi_xem = not self.adapter.la_admin()
         self.tao_giao_dien()
         self.tai_cau_hinh()
 
@@ -52,15 +53,18 @@ class ManHinhCaiDat(ttk.Frame):
             khung.grid(row=i // 2, column=i % 2, sticky='ew', padx=8, pady=7)
             khung.columnconfigure(0, weight=1)
             ttk.Label(khung, text=f'{nhan} ({don_vi})').grid(row=0, column=0, sticky='w')
-            entry = ttk.Entry(khung)
+            entry = ttk.Entry(khung, state='readonly' if self.chi_xem else 'normal')
             entry.grid(row=1, column=0, sticky='ew', pady=(5, 0))
             self.o_nhap_ts[ten] = entry
 
         nut = ttk.Frame(self)
         nut.pack(fill='x', pady=(4, 0))
         ttk.Button(nut, text='Lấy lại dữ liệu', command=self.tai_cau_hinh).pack(side='left')
-        ttk.Button(nut, text='Lưu cấu hình', style='KTX.Primary.TButton',
-                   command=self.luu_cau_hinh).pack(side='right')
+        if self.chi_xem:
+            ttk.Label(nut, text='Thông số hệ thống: chỉ xem, không được chỉnh sửa.').pack(side='right')
+        else:
+            ttk.Button(nut, text='Lưu cấu hình', style='KTX.Primary.TButton',
+                       command=self.luu_cau_hinh).pack(side='right')
 
     @staticmethod
     def _doc_truong_cau_hinh(cfg: object, truong: str) -> object:
@@ -93,11 +97,18 @@ class ManHinhCaiDat(ttk.Frame):
             ten = str(getattr(chu_de, 'name', chu_de)).split('.')[-1].upper()
             if ten == 'DEFAULT':
                 ten = 'LIGHT'
+            if self.chi_xem:
+                # Sinh viên chỉ đổi màu của phiên đang mở, không sửa cấu hình chung.
+                ten = getattr(self.winfo_toplevel(), 'chu_de_hien_tai', ten)
             self.cbo_chu_de.set(ten if ten in self.CHU_DE_GIAO_DIEN else 'LIGHT')
             for _nhan, truong, _kieu, _don_vi in self.THONG_SO:
                 entry = self.o_nhap_ts[truong]
+                if self.chi_xem:
+                    entry.configure(state='normal')
                 entry.delete(0, 'end')
                 entry.insert(0, str(self._doc_truong_cau_hinh(cfg, truong)))
+                if self.chi_xem:
+                    entry.configure(state='readonly')
         except Exception as exc:
             messagebox.showerror('Lỗi tải cấu hình', str(exc), parent=self.winfo_toplevel())
 
@@ -109,6 +120,8 @@ class ManHinhCaiDat(ttk.Frame):
         self.doi_chu_de_callback(chu_de)
 
     def luu_cau_hinh(self):
+        if self.chi_xem:
+            raise PermissionError('Sinh viên không được thay đổi thông số hệ thống.')
         chon = self.cbo_chu_de.get().strip()
         if chon not in self.CHU_DE_GIAO_DIEN:
             messagebox.showwarning('Chủ đề', 'Vui lòng chọn chủ đề màu.', parent=self.winfo_toplevel())

@@ -2,6 +2,7 @@
 import tkinter as tk
 from threading import Thread
 from tkinter import ttk, messagebox
+from typing import Callable, cast
 
 from .xac_thuc.dang_nhap import ManHinhDangNhap
 from .xac_thuc.doi_mat_khau import ManHinhDoiMatKhau
@@ -13,6 +14,7 @@ from .danh_muc.hop_dong import ManHinhHopDong
 from .danh_muc.hoa_don_thang import ManHinhHoaDonThang
 from .danh_muc.vi_pham import ManHinhViPham
 from .danh_muc.tai_khoan import ManHinhTaiKhoan
+from .dung_chung.ho_tro import hien_thi
 
 from .thong_ke.thong_ke import ManHinhThongKe
 from .cai_dat.cai_dat import ManHinhCaiDat
@@ -90,6 +92,15 @@ class App(tk.Tk):
         man_hinh.pack(fill="both", expand=True)
 
     def hien_thi_trang_chu(self):
+        # Không hiển thị màn hình quản lý khi chưa có phiên đăng nhập hợp lệ.
+        if self.adapter.tai_khoan_hien_tai is None:
+            self.hien_thi_dang_nhap()
+            return
+        if not (self.adapter.la_admin() or self.adapter.la_sinh_vien()):
+            messagebox.showerror('Vai trò không hợp lệ',
+                                 'Hệ thống chỉ hỗ trợ Admin và Sinh viên.', parent=self)
+            self.hien_thi_dang_nhap()
+            return
         self.xoa_noi_dung()
         self.nut_menu = {}
         self.nut_dang_chon = None
@@ -120,20 +131,23 @@ class App(tk.Tk):
 
         self.tao_menu()
         self.tao_khu_vuc_noi_dung()
-        self.hien_thi_chao_mung()
+        if self.adapter.la_admin():
+            self.hien_thi_chao_mung()
+        else:
+            self.hien_thi_trang_sinh_vien('Sinh viên')
         self.after_idle(self._cap_nhat_thanh_cuon_trang)
 
     def tao_menu(self):
         ttk.Label(
             self.menu,
-            text="QUẢN LÝ KTX",
+            text="QUẢN LÝ KTX" if self.adapter.la_admin() else "CỔNG SINH VIÊN",
             style="SidebarTitle.TLabel"
         ).pack(fill="x", padx=14, pady=(22, 4))
 
         vai_tro = (
             "Quản trị viên"
             if self.adapter.la_admin()
-            else "Nhân viên"
+            else "Sinh viên"
         )
 
         ttk.Label(
@@ -224,31 +238,39 @@ class App(tk.Tk):
         )
         scrollbar.pack(side="right", fill="y")
 
-        danh_sach = [
-            ("Sinh viên", ManHinhSinhVien),
-            ("Phòng", ManHinhPhong),
-            ("Tòa nhà", ManHinhToaNha),
-            ("Hợp đồng", ManHinhHopDong),
-            ("Hóa đơn tháng", ManHinhHoaDonThang),
-            ("Vi phạm", ManHinhViPham)
-        ]
-
-        # Tài khoản là nơi tập trung phần đặt lại mật khẩu (dành cho quản trị)
-        # và các thao tác nghiệp vụ (dành cho mọi vai trò).
-        danh_sach.append(("Tài khoản", ManHinhTaiKhoan))
-
-        danh_sach.extend([
-            ("Thống kê", ManHinhThongKe),
-            ("Cài đặt", ManHinhCaiDat)
-        ])
+        if self.adapter.la_admin():
+            danh_sach = [
+                ("Sinh viên", ManHinhSinhVien),
+                ("Phòng", ManHinhPhong),
+                ("Tòa nhà", ManHinhToaNha),
+                ("Hợp đồng", ManHinhHopDong),
+                ("Hóa đơn tháng", ManHinhHoaDonThang),
+                ("Vi phạm", ManHinhViPham),
+                ("Tài khoản", ManHinhTaiKhoan),
+                ("Thống kê", ManHinhThongKe),
+                ("Cài đặt", ManHinhCaiDat),
+            ]
+        else:
+            # Cùng bố cục menu như Admin, nhưng từng mục chỉ hiện dữ liệu của mình.
+            danh_sach = [
+                ("Sinh viên", None),
+                ("Phòng", None),
+                ("Tòa nhà", None),
+                ("Hợp đồng", None),
+                ("Hóa đơn tháng", None),
+                ("Vi phạm", None),
+                ("Cài đặt", ManHinhCaiDat),
+            ]
 
         for ten, lop in danh_sach:
             nut = ttk.Button(
                 danh_sach_nut,
                 text=ten,
                 style="Sidebar.TButton",
-                command=lambda t=ten, c=lop:
-                    self.chuyen_man_hinh(c, t)
+                command=lambda t=ten, c=lop: (
+                    self.hien_thi_trang_sinh_vien(t) if c is None
+                    else self.chuyen_man_hinh(c, t)
+                )
             )
             nut.pack(
                 fill="x",
@@ -411,7 +433,7 @@ class App(tk.Tk):
                   style='KTX.BannerTitle.TLabel').pack(anchor='w')
         ttk.Label(dau, text='Quản lý gọn gàng, mọi thông tin ở một nơi.',
                   style='KTX.BannerSub.TLabel').pack(anchor='w', pady=(10, 0))
-        vai_tro = 'Quản trị viên' if self.adapter.la_admin() else 'Nhân viên'
+        vai_tro = 'Quản trị viên' if self.adapter.la_admin() else 'Sinh viên'
         thong_tin = ttk.Frame(self.noi_dung, style='KTX.Panel.TFrame', padding=22)
         thong_tin.pack(fill='x')
         ttk.Label(thong_tin, text=f'Bạn đang đăng nhập: {vai_tro}',
@@ -420,6 +442,17 @@ class App(tk.Tk):
                   style='KTX.PanelText.TLabel').pack(anchor='w', pady=(6, 0))
 
     def chuyen_man_hinh(self, lop, ten=None):
+        if self.adapter.tai_khoan_hien_tai is None:
+            self.hien_thi_dang_nhap()
+            return
+        # Sinh viên chỉ được mở màn hình Cài đặt (ở chế độ chỉ xem thông số).
+        # Mọi màn hình CRUD khác vẫn chỉ dành cho Admin.
+        if not self.adapter.la_admin() and not (
+            self.adapter.la_sinh_vien() and lop is ManHinhCaiDat
+        ):
+            messagebox.showerror('Không có quyền',
+                                 'Bạn không có quyền mở màn hình quản lý.', parent=self)
+            return
         for widget in self.noi_dung.winfo_children():
             widget.destroy()
 
@@ -428,16 +461,16 @@ class App(tk.Tk):
 
         try:
             if lop is ManHinhCaiDat:
-                man_hinh = lop(
+                # Cài đặt cần thêm callback đổi chủ đề.
+                man_hinh = ManHinhCaiDat(
                     self.noi_dung,
                     self.adapter,
                     self.doi_chu_de
                 )
             else:
-                man_hinh = lop(
-                    self.noi_dung,
-                    self.adapter
-                )
+                # Các màn hình quản lý chỉ nhận (parent, adapter).
+                tao_man_hinh = cast(Callable[[ttk.Frame, Adapter], ttk.Frame], lop)
+                man_hinh = tao_man_hinh(self.noi_dung, self.adapter)
 
             man_hinh.pack(fill="both", expand=True)
             self.canvas_noi_dung.yview_moveto(0)
@@ -458,6 +491,144 @@ class App(tk.Tk):
                 str(e),
                 parent=self
             )
+
+    def hien_thi_ca_nhan(self):
+        """Tương thích lời gọi cũ: mở mục Sinh viên của tài khoản đang dùng."""
+        self.hien_thi_trang_sinh_vien('Sinh viên')
+
+    @staticmethod
+    def _gia_tri_ca_nhan(obj, ten):
+        return obj.get(ten) if isinstance(obj, dict) else getattr(obj, ten, None)
+
+    def _cap_nhat_mau_ca_nhan(self):
+        mau = lay_mau(self.chu_de_hien_tai)
+        for bang in getattr(self, '_bang_sinh_vien', []):
+            if bang.winfo_exists():
+                bang.tag_configure('chan', background=mau['the'], foreground=mau['chu'])
+                bang.tag_configure('le', background=mau['nhat'], foreground=mau['chu'])
+
+    def hien_thi_trang_sinh_vien(self, ten):
+        """Một mục menu / một trang chỉ xem; không tạo class giao diện mới."""
+        cac_muc = ('Sinh viên', 'Phòng', 'Tòa nhà', 'Hợp đồng',
+                   'Hóa đơn tháng', 'Vi phạm')
+        if not self.adapter.la_sinh_vien() or ten not in cac_muc:
+            messagebox.showerror('Không có quyền',
+                                 'Chức năng chỉ dành cho tài khoản Sinh viên.', parent=self)
+            return
+        ma = self.adapter.ma_sinh_vien_hien_tai()
+        if not ma:
+            messagebox.showerror('Chưa liên kết hồ sơ',
+                                 'Tài khoản chưa được liên kết mã sinh viên.', parent=self)
+            return
+        for widget in self.noi_dung.winfo_children():
+            widget.destroy()
+        self._bang_sinh_vien = []
+        self.ten_man_hinh.set(ten)
+
+        khung = ttk.Frame(self.noi_dung, padding=14)
+        khung.pack(fill='both', expand=True)
+        dau = ttk.Frame(khung, style='KTX.Banner.TFrame', padding=18)
+        dau.pack(fill='x', pady=(0, 14))
+        ttk.Label(dau, text=ten.upper(),
+                  style='KTX.BannerTitle.TLabel').pack(anchor='w')
+        thong_bao = {
+            'Sinh viên': 'Thông tin hồ sơ cá nhân của bạn.',
+            'Phòng': 'Phòng bạn đang ở theo hợp đồng còn hiệu lực.',
+            'Tòa nhà': 'Thông tin tòa nhà của phòng bạn đang ở.',
+            'Hợp đồng': 'Thông tin các hợp đồng của bạn.',
+            'Hóa đơn tháng': 'Hóa đơn phòng chưa thanh toán trong thời gian hợp đồng của bạn.',
+            'Vi phạm': 'Các vi phạm của bạn chưa được xử lý.',
+        }
+        ttk.Label(dau, text=thong_bao[ten],
+                  style='KTX.BannerSub.TLabel').pack(anchor='w', pady=(7, 0))
+        ttk.Button(khung, text='Làm mới',
+                   command=lambda: self.hien_thi_trang_sinh_vien(ten)).pack(
+                       anchor='e', pady=(0, 10))
+        try:
+            du_lieu = self.adapter.lay_du_lieu_ca_nhan()
+        except Exception as exc:
+            messagebox.showerror('Lỗi tải thông tin', str(exc), parent=self)
+            return
+
+        if ten == 'Sinh viên':
+            sv = du_lieu.get('sinh_vien')
+            if sv is None:
+                ttk.Label(khung, text='Chưa tìm thấy hồ sơ sinh viên gắn với tài khoản.').pack(anchor='w')
+            else:
+                thong_tin = ttk.LabelFrame(khung, text='  Hồ sơ của tôi  ', padding=16)
+                thong_tin.pack(fill='x')
+                cac_truong = (
+                    ('Mã sinh viên', 'ma'), ('Họ tên', 'ten'),
+                    ('Số điện thoại', 'sdt'), ('Năm sinh', 'nam_sinh'),
+                    ('CCCD', 'cccd'), ('Địa chỉ', 'dia_chi_chi_tiet'),
+                    ('Tỉnh', 'tinh'), ('Xã', 'xa')
+                )
+                for i, (nhan, truong) in enumerate(cac_truong):
+                    ttk.Label(thong_tin, text=nhan + ':',
+                              font=('Segoe UI', 10, 'bold')).grid(
+                                  row=i, column=0, sticky='nw', padx=(0, 18), pady=6)
+                    ttk.Label(thong_tin,
+                              text=hien_thi(self._gia_tri_ca_nhan(sv, truong)),
+                              wraplength=650).grid(row=i, column=1, sticky='w', pady=6)
+        else:
+            cau_hinh_bang = {
+                'Phòng': ('phong', (
+                    ('ma', 'Mã phòng'), ('ten', 'Tên phòng'),
+                    ('toa_nha', 'Mã tòa nhà'), ('tang', 'Tầng'),
+                    ('suc_chua', 'Sức chứa'), ('gia_phong', 'Giá phòng'))),
+                'Tòa nhà': ('toa_nha', (
+                    ('ma', 'Mã tòa nhà'), ('ten', 'Tên tòa nhà'),
+                    ('so_tang', 'Số tầng'))),
+                'Hợp đồng': ('hop_dong', (
+                    ('ma', 'Mã hợp đồng'), ('ma_phong', 'Mã phòng'),
+                    ('ngay_ky', 'Ngày ký'), ('ngay_bat_dau', 'Ngày bắt đầu'),
+                    ('ngay_ket_thuc', 'Ngày kết thúc'),
+                    ('trang_thai', 'Trạng thái'))),
+                'Hóa đơn tháng': ('hoa_don', (
+                    ('ma', 'Mã hóa đơn'), ('thang_nam', 'Tháng/năm'),
+                    ('phong', 'Phòng'), ('han_chot', 'Hạn chót'),
+                    ('dien_cu', 'Điện cũ'), ('dien_moi', 'Điện mới'),
+                    ('nuoc_cu', 'Nước cũ'), ('nuoc_moi', 'Nước mới'),
+                    ('trang_thai', 'Trạng thái'))),
+                'Vi phạm': ('vi_pham', (
+                    ('ma', 'Mã vi phạm'), ('ngay_vi_pham', 'Ngày vi phạm'),
+                    ('mo_ta', 'Mô tả'), ('hinh_thuc_ky_luat', 'Kỷ luật'),
+                    ('trang_thai', 'Trạng thái'))),
+            }
+            khoa, cot = cau_hinh_bang[ten]
+            ds = du_lieu.get(khoa, [])
+            if not ds:
+                ttk.Label(khung, text='Không có dữ liệu phù hợp.',
+                          style='KTX.Muted.TLabel').pack(anchor='w', pady=10)
+            else:
+                vung = ttk.Frame(khung)
+                vung.pack(fill='both', expand=True)
+                vung.columnconfigure(0, weight=1)
+                vung.rowconfigure(0, weight=1)
+                truong = tuple(t for t, _ in cot)
+                bang = ttk.Treeview(vung, columns=truong, show='headings',
+                                    height=12, style='KTX.Treeview', selectmode='browse')
+                for t, nhan in cot:
+                    bang.heading(t, text=nhan)
+                    bang.column(t, width=165, minwidth=105, anchor='w')
+                doc = ttk.Scrollbar(vung, orient='vertical', command=bang.yview)
+                ngang = ttk.Scrollbar(vung, orient='horizontal', command=bang.xview)
+                bang.configure(yscrollcommand=doc.set, xscrollcommand=ngang.set)
+                bang.grid(row=0, column=0, sticky='nsew')
+                doc.grid(row=0, column=1, sticky='ns')
+                ngang.grid(row=1, column=0, sticky='ew')
+                self._bang_sinh_vien.append(bang)
+                for i, obj in enumerate(ds):
+                    bang.insert('', 'end',
+                                values=tuple(hien_thi(self._gia_tri_ca_nhan(obj, t))
+                                             for t in truong),
+                                tags=('chan' if i % 2 == 0 else 'le',))
+                self._cap_nhat_mau_ca_nhan()
+        for ten_nut, nut in self.nut_menu.items():
+            nut.configure(style='SelectedSidebar.TButton' if ten_nut == ten
+                          else 'Sidebar.TButton')
+        self.canvas_noi_dung.yview_moveto(0)
+        self.after_idle(self._cap_nhat_thanh_cuon_trang)
 
     def doi_mat_khau(self):
         ManHinhDoiMatKhau(self, self.adapter)
@@ -586,6 +757,8 @@ class App(tk.Tk):
                         con.configure(bg=mau['menu'])
 
         # Các widget tk.Canvas hoặc tk.Frame màu riêng cập nhật qua hook đơn giản.
+        if hasattr(self, '_bang_sinh_vien'):
+            self._cap_nhat_mau_ca_nhan()
         if hasattr(self, 'noi_dung') and self.noi_dung.winfo_exists():
             for man_hinh in self.noi_dung.winfo_children():
                 ham = getattr(man_hinh, 'cap_nhat_mau', None)

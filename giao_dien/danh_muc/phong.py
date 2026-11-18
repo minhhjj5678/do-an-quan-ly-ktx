@@ -1,9 +1,9 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-from thuc_the.ky_tuc_xa import Phong
+from thuc_the.ky_tuc_xa import Phong, ToaNha
 from .danh_muc_co_so import ManHinhDanhMucCoSo
-from ..dung_chung.ho_tro import hien_thi
+from ..dung_chung.ho_tro import hien_thi, gan_goi_y_combobox
 
 
 class ManHinhPhong(ManHinhDanhMucCoSo):
@@ -12,6 +12,31 @@ class ManHinhPhong(ManHinhDanhMucCoSo):
     TRUONG = ['ten', 'suc_chua', 'gia_phong', 'toa_nha', 'tang']
     BAT_BUOC = ['ten', 'suc_chua', 'gia_phong', 'toa_nha', 'tang']
     TRUONG_CHI_DOC_KHI_SUA = {'toa_nha', 'tang'}
+
+    def tao_o_nhap(self, parent, truong, gia_tri):
+        if truong != 'toa_nha':
+            return super().tao_o_nhap(parent, truong, gia_tri)
+        toa_nha = self.adapter.lay_tat_ca(ToaNha)
+        lua_chon = {f'{toa.ten} ({ma})': ma for ma, toa in
+                    sorted(toa_nha.items(), key=lambda item: str(item[1].ten).casefold())}
+        o = ttk.Combobox(parent, state='normal', width=40)
+        gan_goi_y_combobox(o, lua_chon)
+        self._ma_theo_nhan_toa = lua_chon
+        if gia_tri:
+            nhan = next((nhan for nhan, ma in lua_chon.items()
+                         if ma == str(gia_tri)), '')
+            o.set(nhan)
+        return o
+
+    def chuan_hoa_du_lieu_form(self, data, o_nhap):
+        data = super().chuan_hoa_du_lieu_form(data, o_nhap)
+        if 'toa_nha' in data:
+            o = o_nhap['toa_nha']
+            ma = self._ma_theo_nhan_toa.get(data['toa_nha'])
+            if ma is None:
+                raise ValueError('Hãy chọn Tòa nhà từ danh sách gợi ý theo tên.')
+            data['toa_nha'] = ma
+        return data
 
     def tao_giao_dien(self):
         self._ma_chon = None

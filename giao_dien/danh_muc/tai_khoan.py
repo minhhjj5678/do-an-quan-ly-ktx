@@ -3,24 +3,19 @@
 - Bố cục danh sách: tìm kiếm, thêm mới, chi tiết, chỉnh sửa và xóa.
 - Chọn tài khoản trực tiếp trên bảng, không có Hộp tài khoản riêng.
 - Quản trị tài khoản vẫn đi qua Adapter/GiaoThucPhienLamViec.
-- Đặt lại mật khẩu và thao tác nghiệp vụ chỉ xuất hiện trong cửa sổ Chi tiết.
+- Đặt lại mật khẩu mặc định và bật/tắt trạng thái ở cửa sổ Chi tiết.
 - Không dùng CRUD thực thể TaiKhoan.
 """
 import tkinter as tk
 from tkinter import ttk, messagebox
 
 from thuc_the.tai_khoan import LoaiTaiKhoan, TaiKhoan
+from thuc_the.ky_tuc_xa import SinhVien
+from ..dung_chung.ho_tro import gan_goi_y_combobox
 from ..dung_chung.mau_sac import lay_mau
 
 
 class ManHinhTaiKhoan(ttk.Frame):
-    NGHIEP_VU = (
-        ('Thanh toán hợp đồng', 'thanh_toan_hop_dong', 'Mã hợp đồng'),
-        ('Kết thúc hợp đồng', 'ket_thuc_hop_dong', 'Mã hợp đồng'),
-        ('Thanh toán hóa đơn', 'thanh_toan_hoa_don_thang', 'Mã hóa đơn'),
-        ('Xử lý vi phạm', 'xu_ly_vi_pham', 'Mã vi phạm'),
-    )
-
     def __init__(self, parent, adapter):
         super().__init__(parent, padding=0)
         self.adapter = adapter
@@ -28,7 +23,7 @@ class ManHinhTaiKhoan(ttk.Frame):
 
         # Dữ liệu tài khoản luôn đọc từ backend thật, không cache giả lập.
         self.ds_tai_khoan = {}
-        self.o_ma_nghiep_vu = {}
+        self.hien_luu_tru = tk.BooleanVar(master=self, value=False)
 
         self.tao_giao_dien()
         if self.la_quan_tri:
@@ -85,7 +80,7 @@ class ManHinhTaiKhoan(ttk.Frame):
         ).pack(anchor='w')
         ttk.Label(
             dau,
-            text='Quản lý thông tin tài khoản và thực hiện các thao tác cần thiết.',
+            text='Cấp tài khoản, phân quyền và theo dõi trạng thái hoạt động.',
             style='KTX.BannerSub.TLabel'
         ).pack(anchor='w', pady=(4, 0))
 
@@ -113,6 +108,11 @@ class ManHinhTaiKhoan(ttk.Frame):
         ttk.Button(
             thanh_tim, text='Làm mới', command=self.lam_moi
         ).pack(side='left', padx=3)
+        ttk.Checkbutton(
+            thanh_tim, text='Bao gồm lưu trữ',
+            variable=self.hien_luu_tru,
+            command=lambda: self.tai_du_lieu(self.txt_tim.get())
+        ).pack(side='right', padx=(12, 0))
 
         hanh_dong = ttk.Frame(self.noi_dung)
         hanh_dong.pack(fill='x', pady=(0, 10))
@@ -144,7 +144,7 @@ class ManHinhTaiKhoan(ttk.Frame):
         tieu_de = {
             'tai_khoan': 'Tên đăng nhập',
             'vai_tro': 'Vai trò',
-            'ma_chu_the': 'Mã chủ thể',
+            'ma_chu_the': 'Sinh viên (MSSV)',
             'trang_thai': 'Trạng thái'
         }
         for truong in cot:
@@ -181,7 +181,9 @@ class ManHinhTaiKhoan(ttk.Frame):
         if not hasattr(self, 'bang'):
             return
         try:
-            kho = self.adapter.lay_tat_ca(TaiKhoan, lay_luu_tru=True)
+            kho = self.adapter.lay_tat_ca(
+                TaiKhoan, lay_luu_tru=self.hien_luu_tru.get()
+            )
         except Exception as exc:
             messagebox.showerror('Lỗi tải tài khoản', str(exc), parent=self.winfo_toplevel())
             return
@@ -251,10 +253,8 @@ class ManHinhTaiKhoan(ttk.Frame):
             self.noi_dung, text='  Thông tin và thao tác  ', padding=18
         )
         khung.pack(fill='x', pady=(0, 12))
-        ttk.Label(
-            khung,
-            text='Các thao tác nghiệp vụ được mở trong cửa sổ chi tiết.'
-        ).pack(side='left', fill='x', expand=True)
+        ttk.Label(khung, text='Quản lý tài khoản chỉ dành cho Quản trị viên.').pack(
+            side='left', fill='x', expand=True)
         ttk.Button(
             khung, text='Chi tiết tài khoản', style='KTX.Primary.TButton',
             command=lambda: self.mo_chi_tiet(None)
@@ -278,64 +278,127 @@ class ManHinhTaiKhoan(ttk.Frame):
         return {f'{loai.name} ({loai.value})': loai for loai in LoaiTaiKhoan}
 
     def mo_form_tao_tai_khoan(self):
+        """Chọn vai trò trước; mật khẩu ban đầu dùng tên đăng nhập."""
         cua_so = tk.Toplevel(self)
         cua_so.title('Thêm tài khoản mới')
-        cua_so.geometry('520x370')
-        cua_so.minsize(440, 330)
+        cua_so.geometry('610x305')
+        cua_so.minsize(510, 285)
         cua_so.transient(self.winfo_toplevel())
         cua_so.grab_set()
 
         khung = ttk.Frame(cua_so, padding=20)
         khung.pack(fill='both', expand=True)
         khung.columnconfigure(1, weight=1)
-
-        ttk.Label(
-            khung, text='TẠO TÀI KHOẢN MỚI',
-            font=('Segoe UI', 15, 'bold')
-        ).grid(row=0, column=0, columnspan=2, sticky='w', pady=(0, 14))
-
-        txt_ten = self._tao_o_nhap(khung, 1, 'Tên đăng nhập')
-        txt_mk = self._tao_o_nhap(khung, 2, 'Mật khẩu', show='*')
+        ttk.Label(khung, text='TẠO TÀI KHOẢN MỚI',
+                  font=('Segoe UI', 15, 'bold')).grid(
+                      row=0, column=0, columnspan=2, sticky='w', pady=(0, 14))
 
         ttk.Label(khung, text='Vai trò / Loại tài khoản').grid(
-            row=3, column=0, sticky='w', pady=6
-        )
+            row=1, column=0, sticky='w', pady=7)
         bang_vai_tro = self._lay_bang_vai_tro()
-        cbo_vai_tro = ttk.Combobox(
-            khung, state='readonly', values=list(bang_vai_tro)
-        )
-        cbo_vai_tro.grid(row=3, column=1, sticky='ew', padx=12, pady=6)
+        cbo_vai_tro = ttk.Combobox(khung, state='readonly', values=list(bang_vai_tro))
+        cbo_vai_tro.grid(row=1, column=1, sticky='ew', padx=12, pady=7)
 
-        txt_chu_the = self._tao_o_nhap(khung, 4, 'Mã chủ thể (nếu có)')
+        txt_ten = self._tao_o_nhap(khung, 2, 'Tên đăng nhập')
+        txt_ten.configure(state='disabled')
+
+        ttk.Label(khung, text='Sinh viên (họ tên – MSSV)').grid(
+            row=3, column=0, sticky='w', pady=7)
+        cbo_sinh_vien = ttk.Combobox(khung, state='disabled')
+        cbo_sinh_vien.grid(row=3, column=1, sticky='ew', padx=12, pady=7)
+
+        # Cả tài khoản đã ngừng cũng giữ liên kết ma_chu_the, tránh cấp trùng.
+        try:
+            tk_da_co = self.adapter.lay_tat_ca(TaiKhoan, lay_luu_tru=True)
+            ma_da_co = {tk.ma_chu_the for tk in tk_da_co.values() if tk.ma_chu_the}
+            sinh_vien = self.adapter.lay_tat_ca(SinhVien)
+            sv_chua_co = {f'{sv.ten} ({ma})': ma for ma, sv in
+                         sorted(sinh_vien.items(), key=lambda item: str(item[1].ten).casefold())
+                         if ma not in ma_da_co}
+        except Exception as exc:
+            messagebox.showerror('Không thể tải sinh viên', str(exc), parent=cua_so)
+            cua_so.destroy()
+            return
+
+        gan_goi_y_combobox(cbo_sinh_vien, sv_chua_co)
+
+        def dat_ten_dang_nhap(ten: str, cho_phep_nhap: bool):
+            """Hiện MSSV nhưng không cho sửa tay khi là tài khoản Sinh viên."""
+            txt_ten.configure(state='normal')
+            txt_ten.delete(0, tk.END)
+            if ten:
+                txt_ten.insert(0, ten)
+            txt_ten.configure(state='normal' if cho_phep_nhap else 'disabled')
+
+        def cap_nhat_sinh_vien(_event=None):
+            if bang_vai_tro.get(cbo_vai_tro.get()) == LoaiTaiKhoan.SINH_VIEN:
+                ma = sv_chua_co.get(cbo_sinh_vien.get().strip(), '')
+                dat_ten_dang_nhap(ma, False)
+
+        def cap_nhat_vai_tro(_event=None):
+            loai = bang_vai_tro.get(cbo_vai_tro.get())
+            cbo_sinh_vien.set('')
+            dat_ten_dang_nhap('', loai == LoaiTaiKhoan.QUAN_TRI_VIEN)
+            cbo_sinh_vien.configure(
+                state='normal' if loai == LoaiTaiKhoan.SINH_VIEN else 'disabled'
+            )
+
+        cbo_vai_tro.bind('<<ComboboxSelected>>', cap_nhat_vai_tro)
+        cbo_sinh_vien.bind('<<ComboboxSelected>>', cap_nhat_sinh_vien)
+        cbo_sinh_vien.bind('<KeyRelease>', cap_nhat_sinh_vien, add='+')
 
         def luu():
-            ten = txt_ten.get().strip()
-            mat_khau = txt_mk.get()
             loai = bang_vai_tro.get(cbo_vai_tro.get())
-            ma_chu_the = txt_chu_the.get().strip() or None
-            if not ten or not mat_khau or loai is None:
-                messagebox.showwarning(
-                    'Thiếu thông tin',
-                    'Vui lòng nhập tên đăng nhập, mật khẩu và chọn vai trò.',
-                    parent=cua_so
-                )
+            if loai is None:
+                messagebox.showwarning('Thiếu thông tin', 'Hãy chọn vai trò trước.', parent=cua_so)
+                return
+            ma_chu_the = None
+            if loai == LoaiTaiKhoan.SINH_VIEN:
+                ma_chu_the = sv_chua_co.get(cbo_sinh_vien.get().strip())
+                if ma_chu_the is None:
+                    messagebox.showwarning(
+                        'Chưa chọn sinh viên',
+                        'Hãy chọn đúng tên và MSSV từ danh sách sinh viên chưa có tài khoản.',
+                        parent=cua_so
+                    )
+                    return
+                # Tên đăng nhập của Sinh viên luôn bằng mã sinh viên.
+                ten = ma_chu_the
+            else:
+                ten = txt_ten.get().strip()
+                if not ten:
+                    messagebox.showwarning(
+                        'Thiếu thông tin', 'Hãy nhập tên đăng nhập.', parent=cua_so
+                    )
+                    return
+            # PhienLamViec.la_mat_khau yêu cầu mật khẩu tối thiểu 6 ký tự.
+            if len(ten) < 6:
+                messagebox.showwarning('Tên đăng nhập quá ngắn',
+                                       'Do mật khẩu mặc định bằng tên đăng nhập và backend yêu cầu '
+                                       'mật khẩu từ 6 ký tự, tên đăng nhập phải có ít nhất 6 ký tự.',
+                                       parent=cua_so)
+                return
+            if not messagebox.askyesno(
+                'Xác nhận tạo tài khoản',
+                f'Tạo tài khoản {ten}?',
+                parent=cua_so
+            ):
                 return
             try:
-                self.adapter.tao_tai_khoan(ten, mat_khau, loai, ma_chu_the)
-                self.tai_du_lieu()
-                messagebox.showinfo(
-                    'Thành công', f'Đã tạo tài khoản {ten}.', parent=cua_so
-                )
+                self.adapter.tao_tai_khoan(ten, ten, loai, ma_chu_the)
+                self.tai_du_lieu(self.txt_tim.get())
+                messagebox.showinfo('Thành công',
+                                    f'Đã tạo tài khoản {ten}.',
+                                    parent=cua_so)
                 cua_so.destroy()
             except Exception as exc:
                 messagebox.showerror('Lỗi tạo tài khoản', str(exc), parent=cua_so)
 
         nut = ttk.Frame(khung)
-        nut.grid(row=5, column=0, columnspan=2, sticky='e', pady=(18, 0))
+        nut.grid(row=4, column=0, columnspan=2, sticky='e', pady=(18, 0))
         ttk.Button(nut, text='Hủy', command=cua_so.destroy).pack(side='right')
-        ttk.Button(
-            nut, text='Tạo tài khoản', style='KTX.Primary.TButton', command=luu
-        ).pack(side='right', padx=(0, 8))
+        ttk.Button(nut, text='Tạo tài khoản', style='KTX.Primary.TButton',
+                   command=luu).pack(side='right', padx=(0, 8))
 
     # ------------------------------------------------------------------
     # Chi tiết: reset mật khẩu + nghiệp vụ chỉ hiện sau khi bấm nút
@@ -347,7 +410,7 @@ class ManHinhTaiKhoan(ttk.Frame):
 
     def mo_chi_tiet(self, ten):
         cua_so = tk.Toplevel(self)
-        cua_so.title('Chi tiết tài khoản và nghiệp vụ')
+        cua_so.title('Chi tiết tài khoản')
         cua_so.geometry('700x720')
         cua_so.minsize(520, 460)
         cua_so.transient(self.winfo_toplevel())
@@ -375,6 +438,8 @@ class ManHinhTaiKhoan(ttk.Frame):
             noi_dung, text='CHI TIẾT TÀI KHOẢN',
             font=('Segoe UI', 16, 'bold')
         ).pack(anchor='w', pady=(0, 12))
+        # Khởi tạo trước điều kiện để biến luôn tồn tại khi mở chi tiết.
+        bien_trang_thai = tk.StringVar(master=cua_so, value='')
         if ten:
             ttk.Label(noi_dung, text=f'Tên đăng nhập: {ten}').pack(anchor='w', pady=3)
             ttk.Label(
@@ -383,152 +448,75 @@ class ManHinhTaiKhoan(ttk.Frame):
             ).pack(anchor='w', pady=3)
             ttk.Label(
                 noi_dung,
-                text=f"Mã chủ thể: {thong_tin.get('ma_chu_the') or 'Không có'}"
+                text=f"Sinh viên (MSSV): {thong_tin.get('ma_chu_the') or 'Không có'}"
             ).pack(anchor='w', pady=3)
-            ttk.Label(
-                noi_dung,
-                text=f"Trạng thái: {thong_tin.get('trang_thai', 'Chưa xác định')}"
-            ).pack(anchor='w', pady=3)
+            bien_trang_thai.set(
+                f"Trạng thái: {thong_tin.get('trang_thai', 'Chưa xác định')}"
+            )
+            ttk.Label(noi_dung, textvariable=bien_trang_thai).pack(anchor='w', pady=3)
 
         if self.la_quan_tri and ten:
             self.tao_khu_vuc_dat_lai_mat_khau(noi_dung, cua_so, ten)
-            self.tao_khu_vuc_trang_thai_tai_khoan(noi_dung, cua_so, ten)
+            self.tao_khu_vuc_trang_thai_tai_khoan(noi_dung, cua_so, ten, bien_trang_thai)
 
-        self.tao_khu_vuc_nghiep_vu(noi_dung, cua_so)
 
         ttk.Button(
             noi_dung, text='Đóng', command=cua_so.destroy
         ).pack(anchor='e', pady=(16, 2))
 
     def tao_khu_vuc_dat_lai_mat_khau(self, parent, cua_so, ten):
-        khung = ttk.LabelFrame(
-            parent, text='  Đặt lại mật khẩu  ', padding=12
-        )
+        khung = ttk.LabelFrame(parent, text='  Đặt lại mật khẩu  ', padding=12)
         khung.pack(fill='x', pady=(14, 8))
-        khung.columnconfigure(1, weight=1)
-        ttk.Label(khung, text='Mật khẩu mới').grid(
-            row=0, column=0, sticky='w', pady=6
-        )
-        txt_moi = ttk.Entry(khung, show='*')
-        txt_moi.grid(row=0, column=1, sticky='ew', padx=10, pady=6)
-        ttk.Label(khung, text='Xác nhận mật khẩu mới').grid(
-            row=1, column=0, sticky='w', pady=6
-        )
-        txt_xac_nhan = ttk.Entry(khung, show='*')
-        txt_xac_nhan.grid(row=1, column=1, sticky='ew', padx=10, pady=6)
-
         def reset():
-            mat_khau = txt_moi.get()
-            xac_nhan = txt_xac_nhan.get()
-            if not mat_khau or not xac_nhan:
-                messagebox.showwarning(
-                    'Thiếu thông tin', 'Nhập mật khẩu mới và xác nhận.', parent=cua_so
-                )
-                return
-            if mat_khau != xac_nhan:
-                messagebox.showwarning(
-                    'Mật khẩu không khớp',
-                    'Mật khẩu mới và xác nhận không giống nhau.', parent=cua_so
-                )
-                return
-            if not messagebox.askyesno(
-                'Xác nhận', f'Đặt lại mật khẩu cho tài khoản {ten}?', parent=cua_so
-            ):
+            if len(ten) < 6:
+                messagebox.showwarning('Không thể đặt mật khẩu mặc định',
+                                       'Tên đăng nhập này ngắn hơn 6 ký tự, không đạt quy tắc '
+                                       'mật khẩu của PhienLamViec. Cần thống nhất lại quy tắc '
+                                       'với Phần C trước khi đặt lại.', parent=cua_so)
                 return
             try:
-                self.adapter.doi_mat_khau(mat_khau_moi=mat_khau, tai_khoan=ten)
-                txt_moi.delete(0, tk.END)
-                txt_xac_nhan.delete(0, tk.END)
-                messagebox.showinfo(
-                    'Thành công', f'Đã đặt lại mật khẩu cho {ten}.', parent=cua_so
-                )
+                self.adapter.doi_mat_khau(mat_khau_moi=ten, tai_khoan=ten)
+                messagebox.showinfo('Thành công', 'Đã đặt lại mật khẩu', parent=cua_so)
             except Exception as exc:
                 messagebox.showerror('Lỗi đặt lại mật khẩu', str(exc), parent=cua_so)
 
-        ttk.Button(
-            khung, text='Đặt lại mật khẩu', style='KTX.Primary.TButton', command=reset
-        ).grid(row=2, column=1, sticky='e', pady=(8, 2))
+        ttk.Button(khung, text='Đặt lại mật khẩu',
+                   style='KTX.Primary.TButton', command=reset).pack(anchor='e')
 
-    def tao_khu_vuc_trang_thai_tai_khoan(self, parent, cua_so, ten):
-        khung = ttk.LabelFrame(
-            parent, text='  Trạng thái tài khoản  ', padding=12
-        )
+    def tao_khu_vuc_trang_thai_tai_khoan(self, parent, cua_so, ten, bien_trang_thai):
+        khung = ttk.LabelFrame(parent, text='  Trạng thái tài khoản  ', padding=12)
         khung.pack(fill='x', pady=8)
-
-        def thao_tac(ten_ham, mo_ta, trang_thai):
-            if not messagebox.askyesno(
-                'Xác nhận', f'Bạn muốn {mo_ta} tài khoản {ten}?', parent=cua_so
-            ):
-                return
-            try:
-                getattr(self.adapter, ten_ham)(ten)
-                self.tai_du_lieu()
-                messagebox.showinfo(
-                    'Thành công', f'Đã {mo_ta} tài khoản {ten}.', parent=cua_so
-                )
-            except Exception as exc:
-                messagebox.showerror('Lỗi thao tác tài khoản', str(exc), parent=cua_so)
-
         hang = ttk.Frame(khung)
         hang.pack(fill='x')
-        ttk.Button(
-            hang, text='Ngưng hoạt động',
-            command=lambda: thao_tac(
-                'ngung_tai_khoan', 'ngưng hoạt động', 'Ngưng hoạt động'
-            )
-        ).pack(side='left', padx=(0, 8))
-        ttk.Button(
-            hang, text='Kích hoạt lại',
-            command=lambda: thao_tac(
-                'kich_hoat_lai_tai_khoan', 'kích hoạt lại', 'Đang hoạt động'
-            )
-        ).pack(side='left')
 
-    def tao_khu_vuc_nghiep_vu(self, parent, cua_so):
-        khung = ttk.LabelFrame(
-            parent, text='  Thao tác nghiệp vụ  ', padding=12
-        )
-        khung.pack(fill='x', pady=8)
-        khung.columnconfigure(0, weight=1)
-        khung.columnconfigure(1, weight=1)
+        def hien_nut():
+            for con in hang.winfo_children():
+                con.destroy()
+            thong_tin = self.ds_tai_khoan.get(ten, {})
+            dang_hoat_dong = thong_tin.get('trang_thai') == 'Đang hoạt động'
+            ten_ham = 'ngung_tai_khoan' if dang_hoat_dong else 'kich_hoat_lai_tai_khoan'
+            mo_ta = 'ngừng hoạt động' if dang_hoat_dong else 'kích hoạt lại'
+            nhan_nut = 'Ngừng hoạt động' if dang_hoat_dong else 'Kích hoạt lại'
 
-        for i, (tieu_de, ten_ham, nhan_ma) in enumerate(self.NGHIEP_VU):
-            the = ttk.LabelFrame(khung, text=f'  {tieu_de}  ', padding=10)
-            the.grid(
-                row=i // 2, column=i % 2, sticky='nsew', padx=5, pady=5
-            )
-            the.columnconfigure(0, weight=1)
-            ttk.Label(the, text=nhan_ma).grid(
-                row=0, column=0, sticky='w', pady=(0, 5)
-            )
-            o_nhap = ttk.Entry(the)
-            o_nhap.grid(row=1, column=0, sticky='ew', pady=(0, 8))
-            self.o_ma_nghiep_vu[(cua_so, ten_ham)] = o_nhap
-            ttk.Button(
-                the, text='Thực hiện', style='KTX.Primary.TButton',
-                command=lambda h=ten_ham, t=tieu_de, e=o_nhap:
-                    self.thuc_hien_nghiep_vu(h, e.get(), t, cua_so, e)
-            ).grid(row=2, column=0, sticky='e')
+            def thuc_hien():
+                if not messagebox.askyesno('Xác nhận',
+                                           f'Bạn muốn {mo_ta} tài khoản {ten}?', parent=cua_so):
+                    return
+                try:
+                    getattr(self.adapter, ten_ham)(ten)
+                    self.tai_du_lieu(self.txt_tim.get())
+                    hien_nut()
+                    bien_trang_thai.set(
+                        f"Trạng thái: {'Ngưng hoạt động' if dang_hoat_dong else 'Đang hoạt động'}"
+                    )
+                    messagebox.showinfo('Thành công',
+                                        f'Đã {mo_ta} tài khoản {ten}.', parent=cua_so)
+                except Exception as exc:
+                    messagebox.showerror('Lỗi thao tác tài khoản', str(exc), parent=cua_so)
 
-    def thuc_hien_nghiep_vu(self, ten_ham, ma, tieu_de, cua_so, o_nhap):
-        ma = ma.strip()
-        if not ma:
-            messagebox.showwarning(
-                'Thiếu thông tin', 'Vui lòng nhập mã đối tượng.', parent=cua_so
-            )
-            return
-        if not messagebox.askyesno(
-            'Xác nhận', f'{tieu_de} cho mã {ma}?', parent=cua_so
-        ):
-            return
-        try:
-            self.adapter.nghiep_vu(ten_ham, ma)
-            o_nhap.delete(0, tk.END)
-            messagebox.showinfo(
-                'Thành công', f'Đã thực hiện: {tieu_de}.', parent=cua_so
-            )
-        except Exception as exc:
-            messagebox.showerror('Lỗi nghiệp vụ', str(exc), parent=cua_so)
+            ttk.Button(hang, text=nhan_nut, command=thuc_hien).pack(side='left')
+
+        hien_nut()
 
     # ------------------------------------------------------------------
     # Chỉnh sửa / xóa

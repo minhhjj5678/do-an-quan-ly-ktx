@@ -4,6 +4,8 @@ Mã thực thể được sinh bằng tien_ich.tao_ma của nhóm.
 Đây chỉ là dữ liệu trong bộ nhớ; không ghi vào JSON thật.
 """
 from types import SimpleNamespace
+from thuc_the.tai_khoan import LoaiTaiKhoan, TaiKhoan
+from tien_ich.cau_hinh_dong import CauHinhDong
 
 from tien_ich.tao_ma import (
     ma_sinh_vien,
@@ -31,17 +33,25 @@ BO_SINH_MA = {
 class MockPhien:
     def __init__(self, dieu_phoi=None):
         self.users = {'admin': ['123456', True, None, False],
-                      'nhanvien': ['123456', False, None, False]}
+                      'nhanvien': ['123456', False, 'SV0001', False]}
         self._current = None
-        # Liên kết để bảng TaiKhoan và phiên đăng nhập đọc chung dữ liệu.
         if dieu_phoi is not None:
-            dieu_phoi.lien_ket_phien(self)
+            dieu_phoi.gan_phien(self)
 
     @property
     def tai_khoan_hien_tai(self):
         if self._current is None:
             return None
-        return SimpleNamespace(co_quyen_quan_tri=self.users[self._current][1])
+        du_lieu = self.users[self._current]
+        return SimpleNamespace(
+            ma=self._current,
+            co_quyen_quan_tri=du_lieu[1],
+            loai_tai_khoan=(
+                LoaiTaiKhoan.QUAN_TRI_VIEN if du_lieu[1]
+                else LoaiTaiKhoan.SINH_VIEN
+            ),
+            ma_chu_the=du_lieu[2],
+        )
 
     def _la_admin(self):
         return self.tai_khoan_hien_tai is not None and self.tai_khoan_hien_tai.co_quyen_quan_tri
@@ -76,9 +86,16 @@ class MockPhien:
             raise PermissionError('Không có quyền quản trị')
         if tai_khoan in self.users:
             raise ValueError('Tài khoản đã tồn tại')
-        # Demo: quyền admin căn cứ tên enum, backend thật có quy tắc riêng.
-        ten = getattr(loai_tai_khoan, 'name', '').upper()
-        self.users[tai_khoan] = [mat_khau, 'ADMIN' in ten or 'QUAN_TRI' in ten,
+        if loai_tai_khoan not in (LoaiTaiKhoan.QUAN_TRI_VIEN, LoaiTaiKhoan.SINH_VIEN):
+            raise ValueError('Loại tài khoản không hợp lệ')
+        if loai_tai_khoan == LoaiTaiKhoan.SINH_VIEN:
+            if not ma_chu_the:
+                raise ValueError('Thiếu mã sinh viên')
+            if any(u[2] == ma_chu_the for u in self.users.values()):
+                raise ValueError('Sinh viên này đã có tài khoản')
+        else:
+            ma_chu_the = None
+        self.users[tai_khoan] = [mat_khau, loai_tai_khoan == LoaiTaiKhoan.QUAN_TRI_VIEN,
                                 ma_chu_the, False]
 
     def ngung_tai_khoan(self, tai_khoan):
@@ -102,13 +119,12 @@ class MockPhien:
 
 class MockDieuPhoi:
     def __init__(self):
-        self.data = {}
         self._phien = None
+        self.data = {}
         # Lưu lại mã đã cấp để không cấp lại khi xóa bản ghi trong phiên mock.
         self._ma_da_cap = {}
-        self.config = {'chu_de': 'LIGHT', 'don_gia_dien': 3500,
-                       'don_gia_nuoc': 12000, 'suc_chua_mac_dinh': 4,
-                       'han_muc_no': 500000}
+        # Đồng nhất với backend thật: cấu hình là frozen dataclass CauHinhDong.
+        self.config: CauHinhDong = CauHinhDong()
         self._dia_ly = {}
 
     def nap_du_lieu_file(self):
@@ -132,30 +148,25 @@ class MockDieuPhoi:
             raise ValueError('Chưa nạp dữ liệu địa lý')
         return self._dia_ly.copy()
 
-    def lien_ket_phien(self, phien):
-        """Chia sẻ nguồn tài khoản với MockPhien (không tạo kho giả thứ hai)."""
+    def gan_phien(self, phien):
+        # Mock phiên và mock điều phối cùng nhìn vào một kho tài khoản.
         self._phien = phien
 
     def _bang(self, loai):
         return self.data.setdefault(loai, {})
 
     def lay_tat_ca(self, loai, lay_luu_tru=False):
-        from thuc_the.tai_khoan import TaiKhoan, LoaiTaiKhoan
-
         if loai is TaiKhoan:
             if self._phien is None:
-                raise RuntimeError(
-                    'Chưa liên kết phiên: dùng MockPhien(dieu_phoi) khi khởi động.'
-                )
-            # Mock chỉ dựng bản hiển thị, không trả mật khẩu vào giao diện.
+                return {}
             return {
                 ten: SimpleNamespace(
-                    ma=ten,
-                    loai_tai_khoan=(LoaiTaiKhoan.QUAN_TRI_VIEN
-                                    if du_lieu[1] else LoaiTaiKhoan.SINH_VIEN),
+                    ma=ten, ma_dang_nhap=ten,
+                    loai_tai_khoan=(LoaiTaiKhoan.QUAN_TRI_VIEN if du_lieu[1]
+                                    else LoaiTaiKhoan.SINH_VIEN),
                     ma_chu_the=du_lieu[2],
-                    co_quyen_quan_tri=du_lieu[1],
                     con_hoat_dong=not du_lieu[3],
+                    co_quyen_quan_tri=du_lieu[1],
                 )
                 for ten, du_lieu in self._phien.users.items()
                 if lay_luu_tru or not du_lieu[3]
@@ -185,7 +196,7 @@ class MockDieuPhoi:
 
         nhom_ma, ham_sinh_ma = BO_SINH_MA[ten_loai]
 
-        # Đọc tất cả mã đang có từ các bảng để tránh cấp trùng.
+        # Đọc các mã đã cấp để tránh sinh trùng trong phiên Mock.
         cac_ma = {
             ma
             for bang in self.data.values()
@@ -233,20 +244,27 @@ class MockDieuPhoi:
     def xu_ly_vi_pham(self, thuc_the):
         thuc_the.trang_thai = 'Đã xử lý'
 
-    def thong_ke_so_phong(self, **bo_loc):
+    def thong_ke_so_phong(self, toa_nha=None, loai_phong=None) -> tuple[int, int, int]:
         from thuc_the.ky_tuc_xa import Phong
         ds = list(self.lay_tat_ca(Phong).values())
-        return {'tong_so_phong': len(ds)}
+        if toa_nha is not None:
+            ma_toa = getattr(toa_nha, 'ma', toa_nha)
+            ds = [p for p in ds if getattr(p, 'toa_nha', None) == ma_toa]
+        if loai_phong is not None:
+            ds = [p for p in ds if getattr(p, 'suc_chua', None) == loai_phong]
+        # Mock chưa sinh tình trạng ở phòng: mặc định phòng còn trống.
+        return len(ds), 0, len(ds)
 
-    def thong_ke_ty_le_lap_day(self, **bo_loc):
-        return {'ty_le_lap_day': 0}
+    def thong_ke_ty_le_lap_day(self, toa_nha=None, loai_phong=None) -> float:
+        return 0.0
 
-    def thong_ke_cong_no(self, **bo_loc):
-        return {'tong_tien_no': 0, 'so_sinh_vien_dang_no': 0}
+    def thong_ke_cong_no(self) -> tuple[float, int]:
+        return 0.0, 0
 
-    def doc_cau_hinh(self):
-        return dict(self.config)
+    def doc_cau_hinh(self) -> CauHinhDong:
+        return self.config
 
-    def cap_nhat_cau_hinh(self, cau_hinh):
-        self.config.update(cau_hinh if isinstance(cau_hinh, dict)
-                           else vars(cau_hinh))
+    def cap_nhat_cau_hinh(self, cau_hinh: CauHinhDong) -> None:
+        if not isinstance(cau_hinh, CauHinhDong):
+            raise ValueError('Cấu hình phải là CauHinhDong')
+        self.config = cau_hinh

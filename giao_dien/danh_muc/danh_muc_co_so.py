@@ -26,6 +26,7 @@ class ManHinhDanhMucCoSo(ttk.Frame):
     CHO_PHEP_XOA = True
     CHO_PHEP_SUA = True
     TRUONG_CHI_DOC_KHI_TAO = {"trang_thai"}
+    NGHIEP_VU_CHI_TIET: tuple[tuple[str, str], ...] = ()  # (Tên nút, tên nghiệp vụ Adapter)
 
     def __init__(self, parent, adapter):
         super().__init__(parent, padding=12)
@@ -221,7 +222,48 @@ class ManHinhDanhMucCoSo(ttk.Frame):
             noidung = '\n'.join(f'{self.ten_truong(t)}: '
                                 f'{hien_thi(self.lay_gia_tri(obj, t))}'
                                 for t in self.TRUONG)
-            messagebox.showinfo('Chi tiết', noidung, parent=self.winfo_toplevel())
+            if not self.NGHIEP_VU_CHI_TIET:
+                messagebox.showinfo('Chi tiết', noidung, parent=self.winfo_toplevel())
+                return
+            cua_so = tk.Toplevel(self)
+            cua_so.title(f'Chi tiết {self.LOAI.__name__} – {ma}')
+            cua_so.geometry('620x540')
+            cua_so.minsize(480, 340)
+            cua_so.transient(self.winfo_toplevel())
+            cua_so.grab_set()
+            khung = ttk.Frame(cua_so, padding=18)
+            khung.pack(fill='both', expand=True)
+            ttk.Label(khung, text=f'CHI TIẾT {self.LOAI.__name__.upper()}',
+                      font=('Segoe UI', 16, 'bold')).pack(anchor='w', pady=(0, 12))
+            khung_van_ban = ttk.Frame(khung)
+            khung_van_ban.pack(fill='both', expand=True)
+            van_ban = tk.Text(khung_van_ban, wrap='word', height=14, relief='flat')
+            cuon = ttk.Scrollbar(khung_van_ban, orient='vertical', command=van_ban.yview)
+            van_ban.configure(yscrollcommand=cuon.set)
+            van_ban.pack(side='left', fill='both', expand=True)
+            cuon.pack(side='right', fill='y')
+            van_ban.insert('1.0', noidung)
+            van_ban.configure(state='disabled')
+            hang = ttk.Frame(khung)
+            hang.pack(fill='x', pady=(14, 0))
+
+            def thuc_hien(ten_ham, mo_ta):
+                if not messagebox.askyesno('Xác nhận', f'{mo_ta} cho mã {ma}?', parent=cua_so):
+                    return
+                try:
+                    self.adapter.nghiep_vu(ten_ham, ma)
+                    self.tai_du_lieu()
+                    cua_so.destroy()  # Mở lại chi tiết để đọc trạng thái mới
+                    messagebox.showinfo('Thành công', f'Đã {mo_ta.lower()}.',
+                                        parent=self.winfo_toplevel())
+                except Exception as exc:
+                    messagebox.showerror('Lỗi nghiệp vụ', str(exc), parent=cua_so)
+
+            for nhan, ham in self.NGHIEP_VU_CHI_TIET:
+                ttk.Button(hang, text=nhan, style='KTX.Primary.TButton',
+                           command=lambda t=nhan, h=ham: thuc_hien(h, t)).pack(
+                               side='left', padx=(0, 8))
+            ttk.Button(hang, text='Đóng', command=cua_so.destroy).pack(side='right')
         except Exception as exc:
             messagebox.showerror('Lỗi', str(exc), parent=self.winfo_toplevel())
 
