@@ -32,7 +32,7 @@ from tien_ich.cau_hinh_dong import CauHinhDong
 
 # Tài khoản đăng nhập thử được tạo kèm dữ liệu
 TEN_ADMIN_MAU = "admin"
-MAT_KHAU_ADMIN_MAU = "admin123"
+MAT_KHAU_ADMIN_MAU = "123456"
 MAT_KHAU_SINH_VIEN_MAU = "123456"
 SO_TAI_KHOAN_SINH_VIEN_MAU = 10
 
@@ -316,12 +316,14 @@ def sinh_du_lieu(so_sinh_vien: int = 80, seed: int | None = None, hom_nay: date 
     hom_nay = hom_nay or date.today()
 
     # Gom địa chỉ thành các cặp (mã tỉnh, mã xã)
+    tinh_dau = next(iter(dia_ly.values() if isinstance(dia_ly, dict) else (dia_ly or [])), None)
+    print(type(dia_ly), type(tinh_dau), type(getattr(tinh_dau, "danh_sach_xa", None)))
     dia_chi = [(t.ma, x.ma)
     for t in (dia_ly.values() 
               if isinstance(dia_ly, dict) 
               else 
                 (dia_ly or []))
-    for x in t.danh_sach_xa.values()
+    for x in (t.danh_sach_xa.values() if isinstance(t.danh_sach_xa, dict) else (t.danh_sach_xa or []))
     ] or _DIA_CHI_DU_PHONG
 
     cac_ky = _sinh_ky_thue(hom_nay)
@@ -333,7 +335,7 @@ def sinh_du_lieu(so_sinh_vien: int = 80, seed: int | None = None, hom_nay: date 
     # Xếp chỗ xong mới dựng Phong và ToaNha thật từ bản nháp
     cac_phong = []
     for p in ke_hoach_phong:
-        phong = Phong(ma=p.ma, ten=p.ten, suc_chua=p.suc_chua, gia_phong=p.gia * p.suc_chua, toa_nha=p.ma_toa_nha, tang=p.tang)
+        phong = Phong(ma=p.ma, ten=p.ten, suc_chua=p.suc_chua, gia_phong=p.gia, toa_nha=p.ma_toa_nha, tang=p.tang)
         if not p.hoat_dong:
             phong.luu_tru()
         cac_phong.append(phong)
