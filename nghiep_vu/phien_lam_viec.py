@@ -55,20 +55,24 @@ class PhienLamViec(GiaoThucPhienLamViec):
         Dùng them() chứ KHÔNG dùng tao_va_them(): tao_va_them chỉ dành cho thực thể có mã sinh tự động,
         còn mã của tài khoản chính là tên đăng nhập do người dùng nhập.
         """
-        self._dieu_phoi.them(TaiKhoan, tai_khoan)
+        self._dieu_phoi.them(tai_khoan)
 
     def _dat_mat_khau_bam(self, tai_khoan: TaiKhoan, mat_khau_bam_moi: str) -> None:
         """
-        Đổi mật khẩu bằng TaiKhoan.doi_mat_khau() (sửa tại chỗ) rồi nhờ điều phối cập nhật.
-        Điều phối báo lỗi thì trả lại mật khẩu cũ để dữ liệu trong bộ nhớ không bị lệch.
+        Đổi mật khẩu bằng TaiKhoan.doi_mat_khau() rồi nhờ điều phối cập nhật.
+        Lưu ý: lay_tat_ca của điều phối trả về BẢN SAO, nên sửa tại đây chưa ảnh hưởng dữ liệu thật cho đến khi cap_nhat thành công.
+        Điều phối báo lỗi thì trả lại mật khẩu cũ trên bản sao này.
         """
         mat_khau_bam_cu = tai_khoan.mat_khau_bam
         tai_khoan.doi_mat_khau(mat_khau_bam_moi)
         try:
-            self._dieu_phoi.cap_nhat(TaiKhoan, tai_khoan)
+            self._dieu_phoi.cap_nhat(tai_khoan)
         except Exception:
             tai_khoan.doi_mat_khau(mat_khau_bam_cu)
             raise
+        # Bản đang giữ cho người đăng nhập là một bản sao khác, nên đổi mật khẩu của chính họ thì phải làm mới nó
+        if self._tai_khoan_hien_tai is not None and self._tai_khoan_hien_tai.ma == tai_khoan.ma:
+            self._tai_khoan_hien_tai = tai_khoan
 
     # ---- Giao thức ----
     @property
@@ -217,4 +221,5 @@ class PhienLamViec(GiaoThucPhienLamViec):
             raise ValueError("Không thể xóa chính tài khoản đang đăng nhập")
         if dich.con_hoat_dong:
             raise ValueError("Chỉ xóa được tài khoản đã ngừng hoạt động")
-        self._dieu_phoi.xoa(TaiKhoan, dich)
+        # ep_xoa=True vì điều phối từ chối xóa mọi thực thể lưu trữ được nếu thiếu cờ này; tài khoản đã được kiểm tra là đã ngừng ở trên
+        self._dieu_phoi.xoa(dich, ep_xoa=True)

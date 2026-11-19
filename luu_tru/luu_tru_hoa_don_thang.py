@@ -4,8 +4,7 @@ from datetime import date
 from typing import Any
 
 from luu_tru.luu_tru_json import LuuTruJson
-from thuc_the.hoc_vu import ThangNam
-from thuc_the.tai_chinh import HoaDonThang, TrangThaiHoaDon
+from thuc_the.tai_chinh import HoaDonThang, ThangNam, TrangThaiHoaDon
 from tien_ich.cau_hinh_tinh import FILE_HOA_DON_THANG
 
 
