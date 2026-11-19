@@ -80,6 +80,33 @@ class ManHinhDanhMucCoSo(ttk.Frame):
                         background=mau['nhat'], foreground=mau['chu'])
         style.map('KTX.Treeview', background=[('selected', mau['chon'])],
                   foreground=[('selected', mau['chu'])])
+        # Nền xám cho ô bị khóa; giữ riêng style để không ảnh hưởng ô nhập bình thường.
+        style.configure('KTX.Khoa.TEntry', fieldbackground='#E3E8EF',
+                        foreground='#586579')
+        style.map('KTX.Khoa.TEntry',
+                  fieldbackground=[('readonly', '#E3E8EF'), ('disabled', '#E3E8EF')],
+                  foreground=[('readonly', '#586579'), ('disabled', '#586579')])
+        style.configure('KTX.Khoa.TCombobox', fieldbackground='#E3E8EF',
+                        background='#D4DCE6', foreground='#586579')
+        style.map('KTX.Khoa.TCombobox',
+                  fieldbackground=[('disabled', '#E3E8EF'), ('readonly', '#E3E8EF')],
+                  foreground=[('disabled', '#586579'), ('readonly', '#586579')])
+
+    @staticmethod
+    def _khoa_o(o):
+        """Đánh dấu ô chỉ đọc bằng nền xám, vẫn cho sao chép giá trị."""
+        if isinstance(o, ttk.Combobox):
+            o.configure(style='KTX.Khoa.TCombobox', state='disabled')
+        elif isinstance(o, ttk.Entry):
+            o.configure(style='KTX.Khoa.TEntry', state='readonly')
+        elif isinstance(o, tk.Entry):
+            o.configure(state='readonly', readonlybackground='#E3E8EF', fg='#586579')
+        else:
+            o.configure(state='disabled')
+
+    def thu_tu_truong_form(self):
+        """Màn hình con có thể đổi thứ tự nhập mà không đổi cột bảng."""
+        return self.TRUONG
 
     def cap_nhat_mau(self):
         """Đổi màu bảng nếu người dùng đổi chủ đề."""
@@ -381,7 +408,7 @@ class ManHinhDanhMucCoSo(ttk.Frame):
         cuon.grid(row=0, column=1, sticky='ns')
 
         o_nhap = {}
-        for truong in self.TRUONG:
+        for truong in self.thu_tu_truong_form():
             if not sua and (self._la_truong_ma_chinh(truong) or truong in self.TRUONG_CHI_DOC_KHI_TAO):
                 continue
             ttk.Label(form, text=self.ten_truong(truong)).pack(anchor='w', pady=(10, 4))
@@ -389,7 +416,7 @@ class ManHinhDanhMucCoSo(ttk.Frame):
             o.pack(fill='x', ipady=2)
             o_nhap[truong] = o
             if sua and self._chi_doc(truong):
-                o.configure(state='readonly')
+                self._khoa_o(o)
         self.cau_hinh_form(form, o_nhap, du_lieu)
 
         def luu():

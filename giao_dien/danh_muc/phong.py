@@ -13,6 +13,22 @@ class ManHinhPhong(ManHinhDanhMucCoSo):
     BAT_BUOC = ['ten', 'suc_chua', 'gia_phong', 'toa_nha', 'tang']
     TRUONG_CHI_DOC_KHI_SUA = {'toa_nha', 'tang'}
 
+    def cau_hinh_form(self, form, o_nhap, du_lieu):
+        super().cau_hinh_form(form, o_nhap, du_lieu)
+        # Giá trị mặc định lấy từ CauHinhDong, người dùng vẫn có thể sửa.
+        if du_lieu or 'suc_chua' not in o_nhap:
+            return
+        try:
+            cfg = self.adapter.doc_cau_hinh()
+            suc_chua = (cfg.get('SUC_CHUA_PHONG_MAC_DINH', cfg.get('suc_chua_phong_mac_dinh'))
+                        if isinstance(cfg, dict) else cfg.SUC_CHUA_PHONG_MAC_DINH)
+            if suc_chua is not None:
+                o = o_nhap['suc_chua']
+                o.delete(0, tk.END)
+                o.insert(0, str(suc_chua))
+        except Exception as exc:
+            messagebox.showwarning('Không thể đọc cấu hình', str(exc), parent=form.winfo_toplevel())
+
     def tao_o_nhap(self, parent, truong, gia_tri):
         if truong != 'toa_nha':
             return super().tao_o_nhap(parent, truong, gia_tri)

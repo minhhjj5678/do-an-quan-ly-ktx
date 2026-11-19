@@ -299,12 +299,25 @@ class ManHinhTaiKhoan(ttk.Frame):
         cbo_vai_tro = ttk.Combobox(khung, state='readonly', values=list(bang_vai_tro))
         cbo_vai_tro.grid(row=1, column=1, sticky='ew', padx=12, pady=7)
 
+        # Style riêng cho ô bị khóa (không sửa), phân biệt rõ với ô đang nhập.
+        style = ttk.Style(cua_so)
+        style.configure('KTX.Khoa.TEntry', fieldbackground='#E3E8EF', foreground='#586579')
+        style.map('KTX.Khoa.TEntry',
+                  fieldbackground=[('readonly', '#E3E8EF'), ('disabled', '#E3E8EF')],
+                  foreground=[('readonly', '#586579'), ('disabled', '#586579')])
+        style.configure('KTX.Khoa.TCombobox', fieldbackground='#E3E8EF',
+                        background='#D4DCE6', foreground='#586579')
+        style.map('KTX.Khoa.TCombobox',
+                  fieldbackground=[('disabled', '#E3E8EF')],
+                  foreground=[('disabled', '#586579')])
+
         txt_ten = self._tao_o_nhap(khung, 2, 'Tên đăng nhập')
+        txt_ten.configure(style='KTX.Khoa.TEntry')
         txt_ten.configure(state='disabled')
 
         ttk.Label(khung, text='Sinh viên (họ tên – MSSV)').grid(
             row=3, column=0, sticky='w', pady=7)
-        cbo_sinh_vien = ttk.Combobox(khung, state='disabled')
+        cbo_sinh_vien = ttk.Combobox(khung, state='disabled', style='KTX.Khoa.TCombobox')
         cbo_sinh_vien.grid(row=3, column=1, sticky='ew', padx=12, pady=7)
 
         # Cả tài khoản đã ngừng cũng giữ liên kết ma_chu_the, tránh cấp trùng.
@@ -328,7 +341,8 @@ class ManHinhTaiKhoan(ttk.Frame):
             txt_ten.delete(0, tk.END)
             if ten:
                 txt_ten.insert(0, ten)
-            txt_ten.configure(state='normal' if cho_phep_nhap else 'disabled')
+            txt_ten.configure(style='TEntry' if cho_phep_nhap else 'KTX.Khoa.TEntry',
+                              state='normal' if cho_phep_nhap else 'readonly')
 
         def cap_nhat_sinh_vien(_event=None):
             if bang_vai_tro.get(cbo_vai_tro.get()) == LoaiTaiKhoan.SINH_VIEN:
@@ -340,7 +354,8 @@ class ManHinhTaiKhoan(ttk.Frame):
             cbo_sinh_vien.set('')
             dat_ten_dang_nhap('', loai == LoaiTaiKhoan.QUAN_TRI_VIEN)
             cbo_sinh_vien.configure(
-                state='normal' if loai == LoaiTaiKhoan.SINH_VIEN else 'disabled'
+                state='normal' if loai == LoaiTaiKhoan.SINH_VIEN else 'disabled',
+                style='TCombobox' if loai == LoaiTaiKhoan.SINH_VIEN else 'KTX.Khoa.TCombobox'
             )
 
         cbo_vai_tro.bind('<<ComboboxSelected>>', cap_nhat_vai_tro)

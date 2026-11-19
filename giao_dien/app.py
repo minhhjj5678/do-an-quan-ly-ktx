@@ -500,6 +500,50 @@ class App(tk.Tk):
     def _gia_tri_ca_nhan(obj, ten):
         return obj.get(ten) if isinstance(obj, dict) else getattr(obj, ten, None)
 
+    def _ten_tinh_xa_ca_nhan(self, sinh_vien):
+        """Đổi mã địa lý trong hồ sơ thành tên, không thay đổi dữ liệu đã lưu."""
+        ma_tinh = str(self._gia_tri_ca_nhan(sinh_vien, 'tinh') or '').strip()
+        ma_xa = str(self._gia_tri_ca_nhan(sinh_vien, 'xa') or '').strip()
+        if not ma_tinh:
+            return {'tinh': 'Chưa có thông tin', 'xa': 'Chưa có thông tin'}
+
+        try:
+            cac_tinh = self.adapter.dia_ly()
+            if not isinstance(cac_tinh, dict):
+                raise ValueError('Danh mục tỉnh không hợp lệ')
+        except Exception:
+            # Dữ liệu địa lý được nạp qua API; không tự đoán tên từ mã.
+            return {
+                'tinh': f'Chưa tải được tên tỉnh (mã {ma_tinh})',
+                'xa': f'Chưa tải được tên xã (mã {ma_xa})' if ma_xa else 'Chưa có thông tin',
+            }
+
+        tinh = cac_tinh.get(ma_tinh)
+        if tinh is None:
+            tinh = next(
+                (obj for obj in cac_tinh.values()
+                 if str(getattr(obj, 'ma', '')) == ma_tinh), None
+            )
+        if tinh is None:
+            return {
+                'tinh': f'Không tìm thấy tỉnh (mã {ma_tinh})',
+                'xa': f'Không xác định được xã (mã {ma_xa})' if ma_xa else 'Chưa có thông tin',
+            }
+
+        cac_xa = getattr(tinh, 'danh_sach_xa', {})
+        xa = cac_xa.get(ma_xa) if isinstance(cac_xa, dict) else None
+        if xa is None and isinstance(cac_xa, dict):
+            xa = next(
+                (obj for obj in cac_xa.values()
+                 if str(getattr(obj, 'ma', '')) == ma_xa), None
+            )
+        return {
+            'tinh': str(getattr(tinh, 'ten', ma_tinh)),
+            'xa': (str(getattr(xa, 'ten', ma_xa)) if xa is not None
+                   else f'Không tìm thấy xã (mã {ma_xa})' if ma_xa
+                   else 'Chưa có thông tin'),
+        }
+
     def _cap_nhat_mau_ca_nhan(self):
         mau = lay_mau(self.chu_de_hien_tai)
         for bang in getattr(self, '_bang_sinh_vien', []):
@@ -563,13 +607,16 @@ class App(tk.Tk):
                     ('CCCD', 'cccd'), ('Địa chỉ', 'dia_chi_chi_tiet'),
                     ('Tỉnh', 'tinh'), ('Xã', 'xa')
                 )
+                ten_dia_ly = self._ten_tinh_xa_ca_nhan(sv)
                 for i, (nhan, truong) in enumerate(cac_truong):
                     ttk.Label(thong_tin, text=nhan + ':',
                               font=('Segoe UI', 10, 'bold')).grid(
                                   row=i, column=0, sticky='nw', padx=(0, 18), pady=6)
+                    gia_tri = (ten_dia_ly[truong] if truong in ten_dia_ly
+                               else hien_thi(self._gia_tri_ca_nhan(sv, truong)))
                     ttk.Label(thong_tin,
-                              text=hien_thi(self._gia_tri_ca_nhan(sv, truong)),
-                              wraplength=650).grid(row=i, column=1, sticky='w', pady=6)
+                              text=gia_tri, wraplength=650).grid(
+                                  row=i, column=1, sticky='w', pady=6)
         else:
             cau_hinh_bang = {
                 'Phòng': ('phong', (

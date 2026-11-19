@@ -44,6 +44,13 @@ class ManHinhCaiDat(ttk.Frame):
         ttk.Button(giao_dien, text='Áp dụng màu ngay',
                    command=self.ap_dung_chu_de).grid(row=0, column=2, sticky='w', padx=8)
 
+        # Các thông số chỉ xem của Sinh viên có nền xám rõ ràng.
+        style = ttk.Style(self)
+        style.configure('KTX.Khoa.TEntry', fieldbackground='#E3E8EF', foreground='#586579')
+        style.map('KTX.Khoa.TEntry',
+                  fieldbackground=[('readonly', '#E3E8EF'), ('disabled', '#E3E8EF')],
+                  foreground=[('readonly', '#586579'), ('disabled', '#586579')])
+
         tham_so = ttk.LabelFrame(self, text='  Thông số hệ thống  ', padding=14)
         tham_so.pack(fill='x', pady=(0, 12))
         tham_so.columnconfigure(0, weight=1)
@@ -53,7 +60,8 @@ class ManHinhCaiDat(ttk.Frame):
             khung.grid(row=i // 2, column=i % 2, sticky='ew', padx=8, pady=7)
             khung.columnconfigure(0, weight=1)
             ttk.Label(khung, text=f'{nhan} ({don_vi})').grid(row=0, column=0, sticky='w')
-            entry = ttk.Entry(khung, state='readonly' if self.chi_xem else 'normal')
+            entry = ttk.Entry(khung, state='readonly' if self.chi_xem else 'normal',
+                              style='KTX.Khoa.TEntry' if self.chi_xem else 'TEntry')
             entry.grid(row=1, column=0, sticky='ew', pady=(5, 0))
             self.o_nhap_ts[ten] = entry
 

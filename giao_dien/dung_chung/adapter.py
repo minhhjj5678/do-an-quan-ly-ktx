@@ -1,5 +1,5 @@
 ﻿from typing import Any, Callable, TypeVar, cast
-from datetime import date
+from datetime import date, datetime
 import re
 
 from giao_thuc.nghiep_vu import GiaoThucDieuPhoi, GiaoThucPhienLamViec
@@ -124,16 +124,64 @@ class Adapter:
             return (nam, thang) if 1 <= thang <= 12 else None
         return None
 
-    def _hoa_don_thuoc_hop_dong(self, hoa_don, hop_dong) -> bool:
+    @staticmethod
+    def _ngay_hop_dong(gia_tri: object) -> date | None:
+        """Đọc ngày từ thực thể thật hoặc dữ liệu giả lập đã được tuần tự hóa."""
+        if isinstance(gia_tri, datetime):
+            return gia_tri.date()
+        if isinstance(gia_tri, date):
+            return gia_tri
+        if isinstance(gia_tri, str):
+            for dinh_dang in ('%Y-%m-%d', '%d/%m/%Y'):
+                try:
+                    return datetime.strptime(gia_tri.strip(), dinh_dang).date()
+                except ValueError:
+                    continue
+        return None
+
+    def _ngay_het_hieu_luc(self, hop_dong: object) -> date | None:
+        """Ưu tiên ngày hết hạn; ngày kết thúc được dùng khi đã chấm dứt sớm."""
         g = self._gia_tri_ca_nhan
-        if str(g(hoa_don, 'phong')) != str(g(hop_dong, 'ma_phong')):
+        ngay_het_han = self._ngay_hop_dong(g(hop_dong, 'ngay_het_han'))
+        ngay_ket_thuc = self._ngay_hop_dong(g(hop_dong, 'ngay_ket_thuc'))
+        trang_thai = self._ten_trang_thai(hop_dong)
+        if trang_thai in {'DA_KET_THUC', 'KET_THUC', 'DA_HUY', 'HUY'}:
+            if ngay_het_han is not None and ngay_ket_thuc is not None:
+                return min(ngay_het_han, ngay_ket_thuc)
+            return ngay_ket_thuc or ngay_het_han
+        return ngay_het_han or ngay_ket_thuc
+
+    def _hop_dong_dang_o(self, hop_dong: object, hom_nay: date) -> bool:
+        """Xác định phòng hiện tại bằng hiệu lực hợp đồng và quy tắc backend."""
+        if self._ten_trang_thai(hop_dong) in {
+            'DA_KET_THUC', 'KET_THUC', 'DA_HUY', 'HUY'
+        }:
+            return False
+        # Điều phối thật cũng sử dụng HopDong.con_giu_cho() khi xác định phòng có người.
+        con_giu_cho = getattr(hop_dong, 'con_giu_cho', None)
+        if callable(con_giu_cho) and not con_giu_cho():
+            return False
+        ngay_bat_dau = self._ngay_hop_dong(
+            self._gia_tri_ca_nhan(hop_dong, 'ngay_bat_dau'))
+        ngay_het_han = self._ngay_het_hieu_luc(hop_dong)
+        return (ngay_bat_dau is not None and ngay_het_han is not None
+                and ngay_bat_dau <= hom_nay <= ngay_het_han)
+
+    def _hoa_don_thuoc_hop_dong(self, hoa_don: object, hop_dong: object) -> bool:
+        """Hóa đơn của đúng phòng, đúng tháng sinh viên có hợp đồng ở phòng đó."""
+        g = self._gia_tri_ca_nhan
+        ma_phong_hoa_don = g(hoa_don, 'phong')
+        ma_phong_hop_dong = g(hop_dong, 'ma_phong')
+        if (not ma_phong_hoa_don or not ma_phong_hop_dong
+                or str(ma_phong_hoa_don).strip() != str(ma_phong_hop_dong).strip()):
             return False
         thang = self._thang_hoa_don(g(hoa_don, 'thang_nam'))
-        bat_dau = g(hop_dong, 'ngay_bat_dau')
-        ket_thuc = g(hop_dong, 'ngay_ket_thuc')
-        if not thang or not isinstance(bat_dau, date) or not isinstance(ket_thuc, date):
+        bat_dau = self._ngay_hop_dong(g(hop_dong, 'ngay_bat_dau'))
+        het_hieu_luc = self._ngay_het_hieu_luc(hop_dong)
+        if thang is None or bat_dau is None or het_hieu_luc is None:
             return False
-        return (bat_dau.year, bat_dau.month) <= thang <= (ket_thuc.year, ket_thuc.month)
+        return ((bat_dau.year, bat_dau.month) <= thang
+                <= (het_hieu_luc.year, het_hieu_luc.month))
 
     @staticmethod
     def _ten_trang_thai(obj: object) -> str:
@@ -148,10 +196,9 @@ class Adapter:
     def lay_du_lieu_ca_nhan(self) -> dict[str, Any]:
         """Chỉ lấy dữ liệu thuộc mã SV trong phiên đăng nhập.
 
-        Phòng/tòa nhà gắn với hợp đồng còn hiệu lực. Hóa đơn chỉ gồm
+        Phòng/tòa nhà gắn với hợp đồng còn hiệu lực theo backend. Hóa đơn chỉ gồm
         các khoản CHƯA THANH TOÁN trong thời gian hợp đồng; vi phạm chỉ
-        gồm những mục CHƯA XỬ LÝ. Với Mock thiếu trường trạng thái, dùng
-        đúng trạng thái mặc định của thực thể thật. Không cho phép sửa.
+        gồm những mục CHƯA XỬ LÝ. Không cho phép sửa.
         """
         if not self.la_sinh_vien():
             raise PermissionError('Chỉ Sinh viên được xem dữ liệu qua chức năng này.')
@@ -159,36 +206,34 @@ class Adapter:
         if not ma:
             raise ValueError('Tài khoản chưa liên kết mã sinh viên (ma_chu_the).')
         g = self._gia_tri_ca_nhan
+        ma = ma.strip()
         sinh_vien = self.dp.lay_tat_ca(SinhVien, lay_luu_tru=True).get(ma)
         hop_dong = [hd for hd in self.dp.lay_tat_ca(HopDong, lay_luu_tru=True).values()
-                    if str(g(hd, 'ma_sinh_vien')) == ma]
+                    if str(g(hd, 'ma_sinh_vien') or '').strip() == ma]
 
-        # Chỉ phòng đang ở. Không coi phòng từng ở trong quá khứ là phòng hiện tại.
+        # Hợp đồng vẫn hiển thị trong mục Hợp đồng; riêng Phòng/Tòa nhà chỉ
+        # lấy hợp đồng giữ chỗ có hiệu lực theo quy tắc của backend.
         hom_nay = date.today()
-        hd_hien_tai = []
-        for hd in hop_dong:
-            ngay_bat_dau = g(hd, 'ngay_bat_dau')
-            ngay_ket_thuc = g(hd, 'ngay_ket_thuc')
-            if (isinstance(ngay_bat_dau, date)
-                    and isinstance(ngay_ket_thuc, date)
-                    and ngay_bat_dau <= hom_nay <= ngay_ket_thuc
-                    and self._ten_trang_thai(hd) not in
-                    {'DA_KET_THUC', 'KET_THUC', 'DA_HUY', 'HUY'}):
-                hd_hien_tai.append(hd)
-        # Danh sách đã lọc chỉ chứa hợp đồng có ngày bắt đầu hợp lệ.
-        hd_hien_tai.sort(key=lambda hd: cast(date, g(hd, 'ngay_bat_dau')), reverse=True)
-        ma_phong = str(g(hd_hien_tai[0], 'ma_phong')) if hd_hien_tai else None
-        phong_hien_tai = self.dp.lay_tat_ca(Phong, lay_luu_tru=True).get(ma_phong) if ma_phong else None
+        hd_hien_tai = [hd for hd in hop_dong if self._hop_dong_dang_o(hd, hom_nay)]
+        hd_hien_tai.sort(
+            key=lambda hd: self._ngay_hop_dong(g(hd, 'ngay_bat_dau')) or date.min,
+            reverse=True,
+        )
+        ma_phong = None
+        if hd_hien_tai:
+            ma_phong = str(g(hd_hien_tai[0], 'ma_phong') or '').strip() or None
+        phong_hien_tai = (self.dp.lay_tat_ca(Phong, lay_luu_tru=True).get(ma_phong)
+                          if ma_phong else None)
         toa_nha = None
         if phong_hien_tai is not None:
-            ma_toa_nha = str(g(phong_hien_tai, 'toa_nha'))
-            toa_nha = self.dp.lay_tat_ca(ToaNha).get(ma_toa_nha)
+            ma_toa_nha = str(g(phong_hien_tai, 'toa_nha') or '').strip()
+            toa_nha = self.dp.lay_tat_ca(ToaNha, lay_luu_tru=True).get(ma_toa_nha)
 
         hoa_don = [hd for hd in self.dp.lay_tat_ca(HoaDonThang, lay_luu_tru=True).values()
                    if self._ten_trang_thai(hd) in ('', 'CHUA_THANH_TOAN')
                    and any(self._hoa_don_thuoc_hop_dong(hd, hop) for hop in hop_dong)]
         vi_pham = [vp for vp in self.dp.lay_tat_ca(ViPham, lay_luu_tru=True).values()
-                   if str(g(vp, 'sinh_vien')) == ma
+                   if str(g(vp, 'sinh_vien') or '').strip() == ma
                    and self._ten_trang_thai(vp) in ('', 'CHUA_XU_LY')]
         return {
             'sinh_vien': sinh_vien,
