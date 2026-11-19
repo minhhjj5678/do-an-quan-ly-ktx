@@ -54,12 +54,12 @@ class LuuTruJson(GiaoThucLuuTru[T]):
 
     # ---- Hai hàm chuyển đổi: lớp con tự cài ----
     @abstractmethod
-    def _sang_dict(self, thuc_the: T) -> dict[str, Any]:
+    def _sang_dict(self, thuc_the: T, /) -> dict[str, Any]:
         """Đổi một thực thể thành dict chỉ chứa kiểu JSON hiểu được (str, số, bool, None, list, dict)."""
         raise NotImplementedError
 
     @abstractmethod
-    def _tu_dict(self, du_lieu: dict[str, Any]) -> T:
+    def _tu_dict(self, du_lieu: dict[str, Any], /) -> T:
         """Dựng lại một thực thể từ dict đọc trong file. Thiếu khóa/sai kiểu thì để lỗi KeyError/TypeError nổi lên,
         lớp cha sẽ gói lại thành ValueError."""
         raise NotImplementedError

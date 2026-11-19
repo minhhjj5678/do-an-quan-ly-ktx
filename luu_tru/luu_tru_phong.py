@@ -1,7 +1,7 @@
 # Phần C
 # Lưu trữ Phong xuống file JSON (cau_hinh_tinh.FILE_PHONG).
-# Phong chỉ chứa thông tin của chính nó. Quan hệ với sinh viên (SinhVien.phong_hien_tai, HopDong.ma_phong)
-# và với tòa nhà (Phong.toa_nha) nằm ở phía còn lại của quan hệ, nên không lưu danh sách nào ở đây.
+# Phong chỉ chứa thông tin của chính nó. Quan hệ với sinh viên (qua HopDong.ma_phong) và với tòa nhà (Phong.toa_nha)
+# nằm ở phía còn lại của quan hệ, nên không lưu danh sách nào ở đây.
 from typing import Any
 
 from luu_tru.luu_tru_json import LuuTruJson, khoi_phuc_hoat_dong

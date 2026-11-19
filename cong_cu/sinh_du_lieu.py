@@ -3,9 +3,9 @@
 # để kiểm thử sau khi ráp ba tầng.
 #
 # Điểm quan trọng nhất là dữ liệu phải ĐÚNG RÀNG BUỘC CHÉO (bộ sinh được viết để luôn thỏa các điều kiện này), ví dụ:
-#   - sinh viên ghi phòng P0005 thì phòng P0005 phải thật sự tồn tại
+#   - hợp đồng thuộc về sinh viên và phòng nào thì sinh viên và phòng đó phải thật sự tồn tại
 #   - số hợp đồng đang giữ chỗ (HopDong.con_giu_cho) của mỗi phòng không vượt sức chứa
-#   - hợp đồng "đã thanh toán" <=> sinh viên đang ở đúng phòng và đúng hợp đồng đó
+#   - mỗi sinh viên chỉ giữ chỗ nhiều nhất một hợp đồng cùng lúc
 #   - thực thể đã lưu trữ (ngừng hoạt động) không còn hợp đồng đang hiệu lực
 #   - mỗi phòng thuộc một tòa nhà có tồn tại, tầng không vượt số tầng của tòa nhà
 # Việc kiểm tra lại các điều kiện đó do tầng nghiệp vụ đảm nhiệm: chay() gọi nghiep_vu.kiem_cheo_du_lieu.
@@ -223,11 +223,10 @@ def _xep_hop_dong(rng: random.Random, cac_sv: list[SinhVien], cac_phong: list[_K
         if kich_ban == "o":
             phong = _chon_phong_con_cho(rng, cac_phong, hom_nay)
             if phong is not None:  # hết chỗ thì sinh viên này coi như chưa có hợp đồng hiện tại
-                hd = tao(sv, phong, ky_hien_tai, TrangThaiHopDong.DA_THANH_TOAN)
-                # Sinh viên ghi phòng và hợp đồng đang ở; phòng ghi nhận người ở trong bản nháp (dùng để tính hóa đơn)
+                tao(sv, phong, ky_hien_tai, TrangThaiHopDong.DA_THANH_TOAN)
+                # SinhVien không còn ghi phòng/hợp đồng của mình (quan hệ nằm ở HopDong); bản nháp phòng chỉ nhớ
+                # người đang ở để biết phòng nào có người mà lập hóa đơn
                 phong.sinh_vien.append(sv.ma)  # type: ignore[union-attr]
-                sv.phong_hien_tai = phong.ma
-                sv.hop_dong = hd.ma
         elif kich_ban == "cho":
             phong = _chon_phong_con_cho(rng, cac_phong, hom_nay)
             if phong is not None:
@@ -408,7 +407,8 @@ def chay(so_sinh_vien: int = 80, seed: int | None = None, cho_phep_ghi_de: bool 
         raise SystemExit("Dữ liệu sinh ra không qua được kiểm chéo:\n  " + "\n  ".join(loi[:20]))
     ghi_du_lieu(kho)
 
-    dang_o = sum(1 for s in kho.sinh_vien.values() if s.phong_hien_tai)
+    # "Đang ở" suy ra từ hợp đồng: có hợp đồng đã thanh toán và còn giữ chỗ
+    dang_o = len({hd.ma_sinh_vien for hd in kho.hop_dong.values() if hd.trang_thai == TrangThaiHopDong.DA_THANH_TOAN and hd.con_giu_cho()})
     print(f"Đã ghi dữ liệu mẫu (seed={seed}): {len(kho.sinh_vien)} sinh viên ({dang_o} đang ở), {len(kho.phong)} phòng, "
           f"{len(kho.toa_nha)} tòa nhà, {len(kho.hop_dong)} hợp đồng, {len(kho.hoa_don_thang)} hóa đơn, "
           f"{len(kho.vi_pham)} vi phạm, {len(kho.tai_khoan)} tài khoản.")
