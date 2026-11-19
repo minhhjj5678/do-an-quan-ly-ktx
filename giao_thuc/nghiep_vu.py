@@ -55,7 +55,7 @@ class GiaoThucDieuPhoi(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def tao_va_them(self, loai_thuc_the: Callable[Concatenate[str, P], T], /, *args: P.args, **kwargs: P.kwargs) -> T:
+    def tao_va_them(self, loai_thuc_the: Callable[Concatenate[str, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
         """
         Tạo và thêm thực thể vào hệ thống.
         Trả về thực thể đã tạo và thêm vào hệ thống.\n
@@ -64,7 +64,7 @@ class GiaoThucDieuPhoi(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def xoa(self, loai_thuc_the: type[T], thuc_the: T, ep_xoa: bool = False) -> None:
+    def xoa(self, thuc_the: ThucTheGoc, ep_xoa: bool = False) -> None:
         """
         Xóa thực thể khỏi hệ thống.
         Hạn chế dùng đối với thực thể lưu trữ được, thay bằng luu_tru().
@@ -93,7 +93,7 @@ class GiaoThucDieuPhoi(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def cap_nhat(self, loai_thuc_the: type[T], thuc_the: T) -> None:
+    def cap_nhat(self, thuc_the: ThucTheGoc) -> None:
         """
         Cập nhật thông tin của một thực thể.\n
         Ném lỗi nếu thực thể không tồn tại.

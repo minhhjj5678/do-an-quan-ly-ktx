@@ -21,8 +21,6 @@ class SinhVien(ThucTheCoTen, ThucTheLuuTruDuoc):
         self.dia_chi_chi_tiet = dia_chi_chi_tiet
         self.xa = xa
         self.tinh = tinh
-        self.phong_hien_tai = None
-        self.hop_dong = None
 
     @property
     def sdt(self) -> str:
@@ -35,14 +33,6 @@ class SinhVien(ThucTheCoTen, ThucTheLuuTruDuoc):
     @property
     def cccd(self) -> str:
         return self.__cccd
-
-    @property
-    def phong_hien_tai(self) -> str | None:
-        return self.__phong_hien_tai
-
-    @property
-    def hop_dong(self) -> str | None:
-        return self.__hop_dong
 
     @property
     def dia_chi_chi_tiet(self) -> str:
@@ -60,18 +50,6 @@ class SinhVien(ThucTheCoTen, ThucTheLuuTruDuoc):
     def sdt(self, value: str):
         ktra_chuoi(value, lambda x: la_sdt(x), "Số điện thoại không hợp lệ")
         self.__sdt = value
-
-    @phong_hien_tai.setter
-    def phong_hien_tai(self, value: str | None):
-        if value is not None:
-            ktra_ma_tham_chieu_hop_le(value, "Mã phòng")
-        self.__phong_hien_tai = value
-
-    @hop_dong.setter
-    def hop_dong(self, value: str | None):
-        if value is not None:
-            ktra_ma_tham_chieu_hop_le(value, "Mã hợp đồng")
-        self.__hop_dong = value
 
     @dia_chi_chi_tiet.setter
     def dia_chi_chi_tiet(self, value: str):
@@ -111,10 +89,6 @@ class Phong(ThucTheCoTen, ThucTheLuuTruDuoc):
     @property
     def gia_phong(self) -> float:
         return self.__gia_phong
-
-    @property
-    def gia_co_ban(self) -> float:
-        return self.__gia_phong / self.suc_chua
 
     @property
     def toa_nha(self) -> str:
