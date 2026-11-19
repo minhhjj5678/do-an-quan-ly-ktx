@@ -316,7 +316,13 @@ def sinh_du_lieu(so_sinh_vien: int = 80, seed: int | None = None, hom_nay: date 
     hom_nay = hom_nay or date.today()
 
     # Gom địa chỉ thành các cặp (mã tỉnh, mã xã)
-    dia_chi = [(t.ma, x.ma) for t in (dia_ly or []) for x in t.danh_sach_xa] or _DIA_CHI_DU_PHONG
+    dia_chi = [(t.ma, x.ma)
+    for t in (dia_ly.values() 
+              if isinstance(dia_ly, dict) 
+              else 
+                (dia_ly or []))
+    for x in t.danh_sach_xa.values()
+    ] or _DIA_CHI_DU_PHONG
 
     cac_ky = _sinh_ky_thue(hom_nay)
     cac_toa, ke_hoach_phong = _lap_ke_hoach_phong(rng)
