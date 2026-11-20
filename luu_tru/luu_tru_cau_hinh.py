@@ -8,6 +8,7 @@ import json
 import os
 from dataclasses import fields, replace
 from typing import Any
+from typing import get_type_hints
 
 from luu_tru.luu_tru_json import ghi_nguyen_tu
 from tien_ich.cau_hinh_dong import CauHinhDong
@@ -39,6 +40,7 @@ class LuuTruCauHinh:
         """
         if not isinstance(du_lieu, dict):
             raise ValueError("File cấu hình sai cấu trúc: phải là một đối tượng JSON")
+        kieu_thuc = get_type_hints(CauHinhDong)
         gia_tri_moi: dict[str, Any] = {}
         for truong in fields(CauHinhDong):
             if truong.name not in du_lieu:
@@ -52,7 +54,10 @@ class LuuTruCauHinh:
                 # bool là con của int trong Python nên phải loại ra riêng
                 if isinstance(tho, bool) or not isinstance(tho, (int, float)):
                     raise ValueError(f"Giá trị {truong.name} phải là số, nhận {tho!r}")
-                gia_tri_moi[truong.name] = truong.type(tho)  # ép về int hoặc float đúng như khai báo
+                kieu = kieu_thuc.get(truong.name, truong.type)
+                if not isinstance(kieu, type):
+                    raise ValueError(f"Không xác định được kiểu số cho {truong.name}")
+                gia_tri_moi[truong.name] = kieu(tho)  # ép về int hoặc float đúng như khai báo
         return replace(CauHinhDong(), **gia_tri_moi)  # bắt đầu từ mặc định, đè các trường có trong file
 
     @staticmethod
