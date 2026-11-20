@@ -32,11 +32,15 @@ class LuuTruDiaLy(LuuTruJson[Tinh]):
         return {
             "ma": tinh.ma,
             "ten": tinh.ten,
-            "danh_sach_xa": [{"ma": xa.ma, "ten": xa.ten} for xa in tinh.danh_sach_xa],
+            "danh_sach_xa": [{"ma": xa.ma, "ten": xa.ten} for xa in tinh.danh_sach_xa.values()],
         }
 
     def _tu_dict(self, d: dict[str, Any]) -> Tinh:
-        return Tinh(d["ma"], d["ten"], [Xa(x["ma"], x["ten"]) for x in d["danh_sach_xa"]])
+        return Tinh(
+            d["ma"],
+            d["ten"],
+            {x["ma"]: Xa(x["ma"], x["ten"]) for x in d["danh_sach_xa"]},
+        )
 
     # ---- Gọi API ----
     def _goi_api(self) -> Any:
@@ -64,7 +68,11 @@ class LuuTruDiaLy(LuuTruJson[Tinh]):
                 ma = str(tinh["code"])
                 if ma in ket_qua:
                     raise ValueError(f"Mã tỉnh bị trùng: {ma}")
-                ket_qua[ma] = Tinh(ma, tinh["name"], [Xa(str(xa["code"]), xa["name"]) for xa in cac_xa])
+                ket_qua[ma] = Tinh(
+                    ma,
+                    tinh["name"],
+                    {str(xa["code"]): Xa(str(xa["code"]), xa["name"]) for xa in cac_xa},
+                )
         except (KeyError, TypeError, ValueError) as loi:
             raise ValueError(f"API địa lý trả về dữ liệu không đúng định dạng: {loi!r}") from loi
         return ket_qua
