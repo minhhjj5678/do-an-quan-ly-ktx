@@ -1,6 +1,6 @@
 """Danh mục hợp đồng: mã tự sinh bởi DieuPhoiKTX."""
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 
 from thuc_the.ky_tuc_xa import Phong, SinhVien
 from thuc_the.tai_chinh import HopDong
@@ -40,7 +40,7 @@ class ManHinhHopDong(ManHinhDanhMucCoSo):
 
     def tao_o_nhap(self, parent, truong, gia_tri):
         if truong == 'ma_sinh_vien':
-            ds_sv = self.adapter.lay_tat_ca(SinhVien)
+            ds_sv = self.app.dieu_phoi.lay_tat_ca(SinhVien)
             self._nhan_sinh_vien = {
                 f'{sv.ten} ({ma})': str(ma)
                 for ma, sv in sorted(
@@ -56,7 +56,7 @@ class ManHinhHopDong(ManHinhDanhMucCoSo):
 
         if truong != 'ma_phong':
             return super().tao_o_nhap(parent, truong, gia_tri)
-        ds = self.adapter.lay_tat_ca(Phong)
+        ds = self.app.dieu_phoi.lay_tat_ca(Phong)
         self._phong_theo_ma = {str(ma): phong for ma, phong in ds.items()}
         self._nhan_phong = {
             f'{phong.ten} ({ma})': str(ma) for ma, phong in

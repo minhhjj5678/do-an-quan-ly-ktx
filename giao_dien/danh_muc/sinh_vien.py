@@ -29,7 +29,7 @@ class ManHinhSinhVien(ManHinhDanhMucCoSo):
         setattr(cbo_xa, 'ma_theo_nhan', ma_xa_theo_nhan)
 
         try:
-            ds_tinh = self.adapter.dia_ly()
+            ds_tinh = self.app.dieu_phoi.danh_sach_dia_ly()
             # Adapter trả dict nếu không truyền mã tỉnh.
             if not isinstance(ds_tinh, dict) or not ds_tinh:
                 raise ValueError('Danh sách Tỉnh/Xã chưa được nạp. Hãy mở lại form sau khi tải xong.')

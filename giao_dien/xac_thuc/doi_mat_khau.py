@@ -4,9 +4,9 @@ from tkinter import ttk, messagebox
 
 
 class ManHinhDoiMatKhau(tk.Toplevel):
-    def __init__(self, parent, adapter):
+    def __init__(self, parent, app):
         super().__init__(parent)
-        self.adapter = adapter
+        self.app = app
         self.title("Đổi mật khẩu")
         self.geometry("560x610")
         self.minsize(440, 410)
@@ -106,7 +106,7 @@ class ManHinhDoiMatKhau(tk.Toplevel):
                                    "Mật khẩu xác nhận chưa trùng.", parent=self)
             return
         try:
-            self.adapter.doi_mat_khau(mat_khau_moi=moi, mat_khau_cu=cu)
+            self.app.phien.doi_mat_khau(mat_khau_moi=moi, mat_khau_cu=cu)
             messagebox.showinfo("Thành công", "Đã đổi mật khẩu.", parent=self)
             self.destroy()
         except Exception as exc:

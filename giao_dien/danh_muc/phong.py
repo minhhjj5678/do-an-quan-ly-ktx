@@ -19,7 +19,7 @@ class ManHinhPhong(ManHinhDanhMucCoSo):
         if du_lieu or 'suc_chua' not in o_nhap:
             return
         try:
-            cfg = self.adapter.doc_cau_hinh()
+            cfg = self.app.dieu_phoi.doc_cau_hinh()
             suc_chua = (cfg.get('SUC_CHUA_PHONG_MAC_DINH', cfg.get('suc_chua_phong_mac_dinh'))
                         if isinstance(cfg, dict) else cfg.SUC_CHUA_PHONG_MAC_DINH)
             if suc_chua is not None:
@@ -32,7 +32,7 @@ class ManHinhPhong(ManHinhDanhMucCoSo):
     def tao_o_nhap(self, parent, truong, gia_tri):
         if truong != 'toa_nha':
             return super().tao_o_nhap(parent, truong, gia_tri)
-        toa_nha = self.adapter.lay_tat_ca(ToaNha)
+        toa_nha = self.app.dieu_phoi.lay_tat_ca(ToaNha)
         lua_chon = {f'{toa.ten} ({ma})': ma for ma, toa in
                     sorted(toa_nha.items(), key=lambda item: str(item[1].ten).casefold())}
         o = ttk.Combobox(parent, state='normal', width=40)
@@ -56,7 +56,7 @@ class ManHinhPhong(ManHinhDanhMucCoSo):
 
     def tao_giao_dien(self):
         self._ma_chon = None
-        self._tat_ca_phong = []
+        self._tat_ca_phong: list[Phong] = []
         self._the_phong = []
         self._so_cot = 0
         self._tao_style()
@@ -179,8 +179,8 @@ class ManHinhPhong(ManHinhDanhMucCoSo):
 
     def tai_du_lieu(self):
         try:
-            ket_qua = self.adapter.lay_tat_ca(self.LOAI, lay_luu_tru=self.doc_luu_tru())
-            self._tat_ca_phong = list(ket_qua.values())
+            ket_qua = self.app.dieu_phoi.lay_tat_ca(self.LOAI, lay_luu_tru=self.doc_luu_tru())
+            self._tat_ca_phong = list(ket_qua.values()) # type: ignore
             self._cap_nhat_bo_loc()
             self._cap_nhat_thong_ke()
             self.tim_kiem()

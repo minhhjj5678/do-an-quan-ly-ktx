@@ -1,6 +1,9 @@
 ﻿"""Dashboard thống kê đơn giản, vẽ biểu đồ tròn bằng Tkinter Canvas."""
 import tkinter as tk
 from tkinter import ttk, messagebox
+from typing import Any
+
+from thuc_the.ky_tuc_xa import Phong, ToaNha
 
 from ..dung_chung.mau_sac import lay_mau
 
@@ -16,9 +19,9 @@ class ManHinhThongKe(ttk.Frame):
         'loai_phong': 'Sức chứa phòng',
     }
 
-    def __init__(self, parent, adapter):
+    def __init__(self, parent, app):
         super().__init__(parent, padding=12)
-        self.adapter = adapter
+        self.app = app
         self.ten_hien_tai = 'thong_ke_ty_le_lap_day'
         self.ty_le_bieu_do = None
         self.tao_giao_dien()
@@ -41,27 +44,29 @@ class ManHinhThongKe(ttk.Frame):
             o = ttk.Frame(khung_loc)
             o.grid(row=0, column=cot, sticky='ew', padx=(0, 10))
             ttk.Label(o, text=self.NHAN[truong]).pack(anchor='w', pady=(0, 4))
-            
+
             # Thay vì Entry thủ công, dùng ttk.Combobox (thanh ngang sổ xuống)
             values = ['']
             if truong == 'toa_nha':
                 try:
                     from thuc_the.ky_tuc_xa import ToaNha
-                    ds_toa = self.adapter.lay_tat_ca(ToaNha)
+                    ds_toa = self.app.dieu_phoi.lay_tat_ca(ToaNha)
                     values = [''] + [str(t.ma) for t in ds_toa.values()]
                 except Exception:
                     values = ['']  # Không tự bịa mã tòa nhà
             elif truong == 'loai_phong':
-                values = ['', '2', '4', '6', '8']
+                ds_phong: dict[str, Phong] = self.app.dieu_phoi.lay_tat_ca(Phong)
+                ds_suc_chua = {str(p.suc_chua) for p in ds_phong.values() if str(p.suc_chua)}
+                values.extend(sorted(ds_suc_chua))
 
-            cbo = ttk.Combobox(o, values=values, state='readonly')
+            cbo = ttk.Combobox(o, values=values, state='readonly', postcommand=self.lam_moi)
             cbo.pack(fill='x')
             cbo.set('')
+            cbo.bind('<<ComboboxSelected>>', lambda event: self.xem(self.ten_hien_tai))
             self.o_loc[truong] = cbo
 
         ttk.Label(khung_loc, text='Để trống bộ lọc nếu muốn xem toàn bộ dữ liệu.',
-                  style='KTX.Muted.TLabel').grid(row=1, column=0,
-                                                 columnspan=2, sticky='w', pady=(9, 0))
+                  style='KTX.Muted.TLabel').grid(row=1, column=0, columnspan=2, sticky='w', pady=(9, 0))
 
         thanh = ttk.Frame(self)
         thanh.pack(fill='x', pady=(0, 10))
@@ -211,7 +216,7 @@ class ManHinhThongKe(ttk.Frame):
             bo_loc = {}  # Backend thật không nhận bộ lọc công nợ.
 
         try:
-            data = self.adapter.thong_ke(ten_ham, bo_loc)
+            data = self.thong_ke(ten_ham, bo_loc)
             self.ty_le_bieu_do = None
 
             if ten_ham == 'thong_ke_so_phong':
@@ -313,3 +318,12 @@ class ManHinhThongKe(ttk.Frame):
 
     def cap_nhat_mau(self):
         self.ve_bieu_do()
+
+    def thong_ke(self, ten: str, bo_loc: dict[str, Any] | None = None):
+        self.app.yeu_cau_admin()
+        if ten not in [loai_thong_ke[1] for loai_thong_ke in self.THONG_KE]:
+            raise ValueError("Thống kê không hợp lệ")
+        bo_loc = dict(bo_loc or {})
+        if isinstance(bo_loc.get("toa_nha"), str):
+            bo_loc["toa_nha"] = self.app.dieu_phoi.lay_theo_ma(ToaNha, bo_loc["toa_nha"])
+        return getattr(self.app.dieu_phoi, ten)(**bo_loc)

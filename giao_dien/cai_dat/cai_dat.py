@@ -18,12 +18,12 @@ class ManHinhCaiDat(ttk.Frame):
     ]
     CHU_DE_GIAO_DIEN = ('LIGHT', 'GREY', 'DARK', 'BLUE')
 
-    def __init__(self, parent, adapter, doi_chu_de_callback):
+    def __init__(self, parent, app, doi_chu_de_callback):
         super().__init__(parent, padding=16)
-        self.adapter = adapter
+        self.app = app
         self.doi_chu_de_callback = doi_chu_de_callback
         self.o_nhap_ts = {}
-        self.chi_xem = not self.adapter.la_admin()
+        self.chi_xem = not self.app.la_admin()
         self.tao_giao_dien()
         self.tai_cau_hinh()
 
@@ -100,7 +100,7 @@ class ManHinhCaiDat(ttk.Frame):
 
     def tai_cau_hinh(self):
         try:
-            cfg = self.adapter.doc_cau_hinh()
+            cfg = self.app.dieu_phoi.doc_cau_hinh()
             chu_de = self._doc_truong_cau_hinh(cfg, 'CHU_DE')
             ten = str(getattr(chu_de, 'name', chu_de)).split('.')[-1].upper()
             if ten == 'DEFAULT':
@@ -178,7 +178,7 @@ class ManHinhCaiDat(ttk.Frame):
                 THOI_HAN_DONG_TIEN_DIEN=int(du_lieu['THOI_HAN_DONG_TIEN_DIEN']),
                 TIEN_PHAT_QUA_HAN_NGAY=du_lieu['TIEN_PHAT_QUA_HAN_NGAY'],
             )
-            self.adapter.cap_nhat_cau_hinh(cfg_moi)
+            self.app.dieu_phoi.cap_nhat_cau_hinh(cfg_moi)
             self.doi_chu_de_callback(chon)
             messagebox.showinfo('Đã lưu', 'Cấu hình hệ thống đã được lưu.', parent=self.winfo_toplevel())
         except Exception as exc:
