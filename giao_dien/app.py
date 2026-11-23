@@ -4,7 +4,6 @@ from threading import Thread
 from tkinter import ttk, messagebox
 from typing import Any, Callable, cast
 
-from giao_thuc.nghiep_vu import GiaoThucDieuPhoi
 from nghiep_vu.dieu_phoi import DieuPhoiKTX
 from nghiep_vu.phien_lam_viec import PhienLamViec
 from thuc_the.ky_tuc_xa import Phong, SinhVien, ToaNha

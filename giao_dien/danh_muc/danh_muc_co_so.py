@@ -10,7 +10,10 @@ from enum import Enum
 from tkinter import ttk, messagebox
 from typing import Callable, get_type_hints, get_origin, get_args
 
+from thuc_the.ky_tuc_xa import Phong, SinhVien, ToaNha
+from thuc_the.tai_chinh import HoaDonThang, HopDong
 from thuc_the.thuc_the_goc import ThucTheGoc
+from thuc_the.vi_pham import ViPham
 from ..dung_chung.ho_tro import hien_thi
 from ..dung_chung.mau_sac import lay_mau
 
@@ -428,15 +431,28 @@ class ManHinhDanhMucCoSo(ttk.Frame):
                 
                 data = {ten: self._chuyen_kieu(ten, val) for ten, val in data.items()}
                 if sua and ma_cu is not None:
-                    thuc_the = self.LOAI(ma_cu, **data)
+                    thuc_the = self.LOAI(ma_cu, **data) # type: ignore
                     self.app.dieu_phoi.cap_nhat(thuc_the)
                 else:
                     # Kiểm tra chữ ký __init__ để loại bỏ các trường mã tự sinh rỗng/không hợp lệ
                     for k in list(data.keys()):
                         if (self._la_truong_ma_chinh(k) or k == 'ma') and not str(data[k]).strip():
                             data.pop(k, None)
-                    self.app.dieu_phoi.tao_va_them(self.LOAI, **data)
-                
+                    if self.LOAI is SinhVien:
+                        self.app.dieu_phoi.tao_va_luu_sinh_vien(**data)
+                    elif self.LOAI is Phong:
+                        self.app.dieu_phoi.tao_va_luu_phong(**data)
+                    elif self.LOAI is ToaNha:
+                        self.app.dieu_phoi.tao_va_luu_toa_nha(**data)
+                    elif self.LOAI is HopDong:
+                        self.app.dieu_phoi.tao_va_luu_hop_dong(**data)
+                    elif self.LOAI is HoaDonThang:
+                        self.app.dieu_phoi.tao_va_luu_hoa_don_thang(**data)
+                    elif self.LOAI is ViPham:
+                        self.app.dieu_phoi.tao_va_luu_vi_pham(**data)
+                    else:
+                        raise ValueError('Loại dữ liệu không hỗ trợ thêm mới')
+
                 cua_so.destroy()
                 self.tai_du_lieu()
                 messagebox.showinfo('Đã lưu', 'Thông tin đã được lưu thành công.',
