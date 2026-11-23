@@ -21,7 +21,7 @@ from tien_ich.regex import la_ma_sinh_vien, la_mat_khau, la_ten_dang_nhap
 # Dùng chung một thông báo cho "không có tài khoản" và "sai mật khẩu" để người ngoài
 # không dò được tên đăng nhập nào tồn tại.
 _LOI_SAI_THONG_TIN = "Sai tên đăng nhập hoặc mật khẩu"
-_LOI_MAT_KHAU = "Mật khẩu phải có ít nhất 6 ký tự, chỉ gồm chữ cái tiếng Anh không dấu, chữ số và ký hiệu (không có khoảng trắng)"
+_LOI_MAT_KHAU = "Mật khẩu phải có ít nhất 5 ký tự, chỉ gồm chữ cái tiếng Anh không dấu, chữ số và ký hiệu (không có khoảng trắng)"
 
 
 @cache
