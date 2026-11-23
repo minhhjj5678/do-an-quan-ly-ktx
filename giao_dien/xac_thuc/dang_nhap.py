@@ -12,9 +12,9 @@ class ManHinhDangNhap(ttk.Frame):
     MAU_NHAN = "#0F877A"
     MAU_VIEN = "#D9E2EB"
 
-    def __init__(self, parent, adapter, on_success):
+    def __init__(self, parent, app, on_success):
         super().__init__(parent)
-        self.adapter = adapter
+        self.app = app
         self.on_success = on_success
         self.tao_giao_dien()
 
@@ -201,7 +201,7 @@ class ManHinhDangNhap(ttk.Frame):
 
         try:
             # Adapter mới trả về None khi thành công, báo lỗi bằng exception.
-            self.adapter.dang_nhap(tai_khoan, mat_khau)
+            self.app.phien.dang_nhap(tai_khoan, mat_khau)
         except Exception as e:
             messagebox.showerror(
                 "Đăng nhập thất bại", str(e), parent=self

@@ -1,106 +1,106 @@
 [
   {
     "ma": "VP0001",
-    "sinh_vien": "SV0063",
-    "ngay_vi_pham": "2026-10-06",
-    "mo_ta": "Gây ồn sau 23 giờ",
-    "hinh_thuc_ky_luat": "Khiển trách",
-    "trang_thai": "CHUA_XU_LY"
-  },
-  {
-    "ma": "VP0002",
-    "sinh_vien": "SV0004",
-    "ngay_vi_pham": "2026-10-03",
-    "mo_ta": "Mang người lạ vào phòng",
-    "hinh_thuc_ky_luat": "Cảnh cáo",
-    "trang_thai": "DA_XU_LY"
-  },
-  {
-    "ma": "VP0003",
-    "sinh_vien": "SV0051",
-    "ngay_vi_pham": "2026-09-24",
-    "mo_ta": "Làm hỏng giường tầng",
-    "hinh_thuc_ky_luat": "Bồi thường 800.000 đồng",
-    "trang_thai": "CHUA_XU_LY"
-  },
-  {
-    "ma": "VP0004",
-    "sinh_vien": "SV0055",
-    "ngay_vi_pham": "2026-09-04",
-    "mo_ta": "Làm vỡ kính cửa sổ",
-    "hinh_thuc_ky_luat": "Bồi thường 250.000 đồng",
-    "trang_thai": "CHUA_XU_LY"
-  },
-  {
-    "ma": "VP0005",
-    "sinh_vien": "SV0044",
-    "ngay_vi_pham": "2026-11-09",
-    "mo_ta": "Gây ồn sau 23 giờ",
-    "hinh_thuc_ky_luat": "Khiển trách",
-    "trang_thai": "CHUA_XU_LY"
-  },
-  {
-    "ma": "VP0006",
-    "sinh_vien": "SV0072",
-    "ngay_vi_pham": "2026-08-16",
-    "mo_ta": "Hư quạt trần do sử dụng sai",
-    "hinh_thuc_ky_luat": "Bồi thường 400.000 đồng",
-    "trang_thai": "CHUA_XU_LY"
-  },
-  {
-    "ma": "VP0007",
-    "sinh_vien": "SV0012",
-    "ngay_vi_pham": "2026-11-18",
-    "mo_ta": "Về muộn quá giờ quy định",
-    "hinh_thuc_ky_luat": "Nhắc nhở",
-    "trang_thai": "DA_XU_LY"
-  },
-  {
-    "ma": "VP0008",
-    "sinh_vien": "SV0036",
-    "ngay_vi_pham": "2026-10-26",
-    "mo_ta": "Hư quạt trần do sử dụng sai",
-    "hinh_thuc_ky_luat": "Bồi thường 400.000 đồng",
-    "trang_thai": "DA_XU_LY"
-  },
-  {
-    "ma": "VP0009",
-    "sinh_vien": "SV0070",
-    "ngay_vi_pham": "2026-09-15",
+    "sinh_vien": "SV0052",
+    "ngay_vi_pham": "2026-08-04",
     "mo_ta": "Không dọn vệ sinh phòng",
     "hinh_thuc_ky_luat": "Nhắc nhở",
     "trang_thai": "CHUA_XU_LY"
   },
   {
-    "ma": "VP0010",
-    "sinh_vien": "SV0034",
-    "ngay_vi_pham": "2026-09-09",
-    "mo_ta": "Làm hỏng ổ khóa cửa",
-    "hinh_thuc_ky_luat": "Bồi thường 150.000 đồng",
+    "ma": "VP0002",
+    "sinh_vien": "SV0014",
+    "ngay_vi_pham": "2026-08-26",
+    "mo_ta": "Gây ồn sau 23 giờ",
+    "hinh_thuc_ky_luat": "Khiển trách",
+    "trang_thai": "DA_XU_LY"
+  },
+  {
+    "ma": "VP0003",
+    "sinh_vien": "SV0021",
+    "ngay_vi_pham": "2026-10-29",
+    "mo_ta": "Hư quạt trần do sử dụng sai",
+    "hinh_thuc_ky_luat": "Bồi thường 400.000 đồng",
     "trang_thai": "CHUA_XU_LY"
   },
   {
-    "ma": "VP0011",
-    "sinh_vien": "SV0051",
-    "ngay_vi_pham": "2026-09-21",
+    "ma": "VP0004",
+    "sinh_vien": "SV0035",
+    "ngay_vi_pham": "2026-08-12",
+    "mo_ta": "Nấu ăn trong phòng",
+    "hinh_thuc_ky_luat": "Cảnh cáo",
+    "trang_thai": "DA_XU_LY"
+  },
+  {
+    "ma": "VP0005",
+    "sinh_vien": "SV0022",
+    "ngay_vi_pham": "2026-09-20",
+    "mo_ta": "Hư quạt trần do sử dụng sai",
+    "hinh_thuc_ky_luat": "Bồi thường 400.000 đồng",
+    "trang_thai": "CHUA_XU_LY"
+  },
+  {
+    "ma": "VP0006",
+    "sinh_vien": "SV0009",
+    "ngay_vi_pham": "2026-10-26",
     "mo_ta": "Mang người lạ vào phòng",
     "hinh_thuc_ky_luat": "Cảnh cáo",
     "trang_thai": "DA_XU_LY"
   },
   {
-    "ma": "VP0012",
-    "sinh_vien": "SV0041",
-    "ngay_vi_pham": "2026-11-02",
+    "ma": "VP0007",
+    "sinh_vien": "SV0057",
+    "ngay_vi_pham": "2026-08-15",
+    "mo_ta": "Làm hỏng giường tầng",
+    "hinh_thuc_ky_luat": "Bồi thường 800.000 đồng",
+    "trang_thai": "CHUA_XU_LY"
+  },
+  {
+    "ma": "VP0008",
+    "sinh_vien": "SV0009",
+    "ngay_vi_pham": "2026-09-11",
+    "mo_ta": "Không dọn vệ sinh phòng",
+    "hinh_thuc_ky_luat": "Nhắc nhở",
+    "trang_thai": "CHUA_XU_LY"
+  },
+  {
+    "ma": "VP0009",
+    "sinh_vien": "SV0014",
+    "ngay_vi_pham": "2026-10-28",
+    "mo_ta": "Làm vỡ kính cửa sổ",
+    "hinh_thuc_ky_luat": "Bồi thường 250.000 đồng",
+    "trang_thai": "CHUA_XU_LY"
+  },
+  {
+    "ma": "VP0010",
+    "sinh_vien": "SV0021",
+    "ngay_vi_pham": "2026-08-30",
     "mo_ta": "Gây ồn sau 23 giờ",
     "hinh_thuc_ky_luat": "Khiển trách",
     "trang_thai": "CHUA_XU_LY"
   },
   {
+    "ma": "VP0011",
+    "sinh_vien": "SV0064",
+    "ngay_vi_pham": "2026-07-23",
+    "mo_ta": "Làm hỏng giường tầng",
+    "hinh_thuc_ky_luat": "Bồi thường 800.000 đồng",
+    "trang_thai": "CHUA_XU_LY"
+  },
+  {
+    "ma": "VP0012",
+    "sinh_vien": "SV0038",
+    "ngay_vi_pham": "2026-08-20",
+    "mo_ta": "Không dọn vệ sinh phòng",
+    "hinh_thuc_ky_luat": "Nhắc nhở",
+    "trang_thai": "CHUA_XU_LY"
+  },
+  {
     "ma": "VP0013",
-    "sinh_vien": "SV0049",
-    "ngay_vi_pham": "2026-08-30",
-    "mo_ta": "Gây ồn sau 23 giờ",
-    "hinh_thuc_ky_luat": "Khiển trách",
-    "trang_thai": "DA_XU_LY"
+    "sinh_vien": "SV0064",
+    "ngay_vi_pham": "2026-09-09",
+    "mo_ta": "Làm hỏng ổ khóa cửa",
+    "hinh_thuc_ky_luat": "Bồi thường 150.000 đồng",
+    "trang_thai": "CHUA_XU_LY"
   }
 ]

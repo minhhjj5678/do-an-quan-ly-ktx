@@ -32,7 +32,7 @@ class ManHinhHoaDonThang(ManHinhDanhMucCoSo):
     def tao_o_nhap(self, parent, truong, gia_tri):
         if truong != 'phong':
             return super().tao_o_nhap(parent, truong, gia_tri)
-        ds = self.adapter.lay_tat_ca(Phong)
+        ds = self.app.dieu_phoi.lay_tat_ca(Phong)
         self._nhan_phong = {
             f'{phong.ten} ({ma})': str(ma) for ma, phong in
             sorted(ds.items(), key=lambda item: str(item[1].ten).casefold())
@@ -75,7 +75,7 @@ class ManHinhHoaDonThang(ManHinhDanhMucCoSo):
         hom_nay = date.today()
         dien('thang_nam', f'{hom_nay.year:04d}-{hom_nay.month:02d}')
         try:
-            cfg = self.adapter.doc_cau_hinh()
+            cfg = self.app.dieu_phoi.doc_cau_hinh()
             def gia_tri_cfg(ten: str) -> int | float:
                 if isinstance(cfg, dict):
                     gia_tri = cfg.get(ten, cfg.get(ten.lower()))
@@ -102,7 +102,7 @@ class ManHinhHoaDonThang(ManHinhDanhMucCoSo):
             if ma is None:
                 return
             try:
-                ds = self.adapter.lay_tat_ca(HoaDonThang, lay_luu_tru=True)
+                ds = self.app.dieu_phoi.lay_tat_ca(HoaDonThang, lay_luu_tru=True)
                 hoa_don = [hd for hd in ds.values()
                            if str(getattr(hd, 'phong', '')) == ma
                            and self._khoa_thang(getattr(hd, 'thang_nam', None)) is not None]

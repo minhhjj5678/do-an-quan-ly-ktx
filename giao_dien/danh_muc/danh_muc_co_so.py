@@ -8,9 +8,12 @@ import tkinter as tk
 from datetime import date, datetime
 from enum import Enum
 from tkinter import ttk, messagebox
-from typing import get_type_hints, get_origin, get_args
+from typing import Callable, get_type_hints, get_origin, get_args
 
+from thuc_the.ky_tuc_xa import Phong, SinhVien, ToaNha
+from thuc_the.tai_chinh import HoaDonThang, HopDong
 from thuc_the.thuc_the_goc import ThucTheGoc
+from thuc_the.vi_pham import ViPham
 from ..dung_chung.ho_tro import hien_thi
 from ..dung_chung.mau_sac import lay_mau
 
@@ -28,9 +31,9 @@ class ManHinhDanhMucCoSo(ttk.Frame):
     TRUONG_CHI_DOC_KHI_TAO = {"trang_thai"}
     NGHIEP_VU_CHI_TIET: tuple[tuple[str, str], ...] = ()  # (Tên nút, tên nghiệp vụ Adapter)
 
-    def __init__(self, parent, adapter):
+    def __init__(self, parent, app):
         super().__init__(parent, padding=12)
-        self.adapter = adapter
+        self.app = app
         self.hien_luu_tru = tk.BooleanVar(master=self, value=False)
         self._tham_so = inspect.signature(self.LOAI.__init__).parameters
         try:
@@ -149,7 +152,7 @@ class ManHinhDanhMucCoSo(ttk.Frame):
 
         duoi = ttk.Frame(self)
         duoi.pack(fill='x', pady=(0, 12))
-        nut = [('Xem chi tiết', self.xem_chi_tiet)]
+        nut: list[tuple[str, Callable]] = [('Xem chi tiết', self.xem_chi_tiet)]
         if self.CHO_PHEP_SUA:
             nut.append(('Chỉnh sửa', self.chinh_sua))
         if self.CO_LUU_TRU:
@@ -207,7 +210,7 @@ class ManHinhDanhMucCoSo(ttk.Frame):
 
     def tai_du_lieu(self):
         try:
-            self.hien_thi_danh_sach(self.adapter.lay_tat_ca(
+            self.hien_thi_danh_sach(self.app.dieu_phoi.lay_tat_ca(
                 self.LOAI, lay_luu_tru=self.doc_luu_tru()))
         except Exception as exc:
             messagebox.showerror('Lỗi tải dữ liệu', str(exc), parent=self.winfo_toplevel())
@@ -218,11 +221,8 @@ class ManHinhDanhMucCoSo(ttk.Frame):
             self.tai_du_lieu()
             return
         try:
-            ket_qua = self.adapter.loc(
-                self.LOAI,
-                lambda obj: any(tu in hien_thi(self.lay_gia_tri(obj, t)).casefold()
-                                for t in self.TRUONG),
-                lay_luu_tru=self.doc_luu_tru())
+            self.app.yeu_cau_admin()
+            ket_qua = self.app.dieu_phoi.loc_theo_dieu_kien(self.LOAI, lambda obj: any(tu in hien_thi(self.lay_gia_tri(obj, t)).casefold() for t in self.TRUONG), lay_luu_tru=self.doc_luu_tru())
             self.hien_thi_danh_sach(ket_qua)
         except Exception as exc:
             messagebox.showerror('Lỗi tìm kiếm', str(exc), parent=self.winfo_toplevel())
@@ -244,8 +244,8 @@ class ManHinhDanhMucCoSo(ttk.Frame):
         if ma is None:
             return
         try:
-            obj = self.adapter.lay_theo_ma(self.LOAI, ma,
-                                         lay_luu_tru=self.doc_luu_tru())
+            self.app.yeu_cau_admin()
+            obj = self.app.dieu_phoi.lay_theo_ma(self.LOAI, ma, lay_luu_tru=self.doc_luu_tru())
             noidung = '\n'.join(f'{self.ten_truong(t)}: '
                                 f'{hien_thi(self.lay_gia_tri(obj, t))}'
                                 for t in self.TRUONG)
@@ -278,7 +278,7 @@ class ManHinhDanhMucCoSo(ttk.Frame):
                 if not messagebox.askyesno('Xác nhận', f'{mo_ta} cho mã {ma}?', parent=cua_so):
                     return
                 try:
-                    self.adapter.nghiep_vu(ten_ham, ma)
+                    self.app.thuc_hien_nghiep_vu(ten_ham, ma)
                     self.tai_du_lieu()
                     cua_so.destroy()  # Mở lại chi tiết để đọc trạng thái mới
                     messagebox.showinfo('Thành công', f'Đã {mo_ta.lower()}.',
@@ -287,9 +287,7 @@ class ManHinhDanhMucCoSo(ttk.Frame):
                     messagebox.showerror('Lỗi nghiệp vụ', str(exc), parent=cua_so)
 
             for nhan, ham in self.NGHIEP_VU_CHI_TIET:
-                ttk.Button(hang, text=nhan, style='KTX.Primary.TButton',
-                           command=lambda t=nhan, h=ham: thuc_hien(h, t)).pack(
-                               side='left', padx=(0, 8))
+                ttk.Button(hang, text=nhan, style='KTX.Primary.TButton', command=lambda t=nhan, h=ham: thuc_hien(h, t)).pack(side='left', padx=(0, 8))
             ttk.Button(hang, text='Đóng', command=cua_so.destroy).pack(side='right')
         except Exception as exc:
             messagebox.showerror('Lỗi', str(exc), parent=self.winfo_toplevel())
@@ -305,8 +303,7 @@ class ManHinhDanhMucCoSo(ttk.Frame):
         if ma is None:
             return
         try:
-            obj = self.adapter.lay_theo_ma(self.LOAI, ma,
-                                         lay_luu_tru=self.doc_luu_tru())
+            obj = self.app.dieu_phoi.lay_theo_ma(self.LOAI, ma, lay_luu_tru=self.doc_luu_tru())
             du_lieu = {t: self.lay_gia_tri(obj, t) for t in self.TRUONG}
             self.mo_form(du_lieu, ma)
         except Exception as exc:
@@ -371,7 +368,7 @@ class ManHinhDanhMucCoSo(ttk.Frame):
         except Exception:
             raise ValueError(f"Dữ liệu ở trường '{ten_hien_thi}' không hợp lệ. Vui lòng nhập đúng định dạng kiểu dữ liệu.")
 
-    def mo_form(self, du_lieu=None, ma_cu=None):
+    def mo_form(self, du_lieu=None, ma_cu: str | None = None):
         sua = ma_cu is not None
         if sua and not self.CHO_PHEP_SUA:
             messagebox.showwarning('Không thể sửa', 'Thực thể này không được chỉnh sửa sau khi tạo.', parent=self.winfo_toplevel())
@@ -433,15 +430,29 @@ class ManHinhDanhMucCoSo(ttk.Frame):
                         raise ValueError(f'Bạn chưa nhập {self.ten_truong(ten)}')
                 
                 data = {ten: self._chuyen_kieu(ten, val) for ten, val in data.items()}
-                if sua:
-                    self.adapter.cap_nhat_truong(self.LOAI, ma_cu, **data)
+                if sua and ma_cu is not None:
+                    thuc_the = self.LOAI(ma_cu, **data) # type: ignore
+                    self.app.dieu_phoi.cap_nhat(thuc_the)
                 else:
                     # Kiểm tra chữ ký __init__ để loại bỏ các trường mã tự sinh rỗng/không hợp lệ
                     for k in list(data.keys()):
                         if (self._la_truong_ma_chinh(k) or k == 'ma') and not str(data[k]).strip():
                             data.pop(k, None)
-                    self.adapter.tao_va_them(self.LOAI, **data)
-                
+                    if self.LOAI is SinhVien:
+                        self.app.dieu_phoi.tao_va_luu_sinh_vien(**data)
+                    elif self.LOAI is Phong:
+                        self.app.dieu_phoi.tao_va_luu_phong(**data)
+                    elif self.LOAI is ToaNha:
+                        self.app.dieu_phoi.tao_va_luu_toa_nha(**data)
+                    elif self.LOAI is HopDong:
+                        self.app.dieu_phoi.tao_va_luu_hop_dong(**data)
+                    elif self.LOAI is HoaDonThang:
+                        self.app.dieu_phoi.tao_va_luu_hoa_don_thang(**data)
+                    elif self.LOAI is ViPham:
+                        self.app.dieu_phoi.tao_va_luu_vi_pham(**data)
+                    else:
+                        raise ValueError('Loại dữ liệu không hỗ trợ thêm mới')
+
                 cua_so.destroy()
                 self.tai_du_lieu()
                 messagebox.showinfo('Đã lưu', 'Thông tin đã được lưu thành công.',
@@ -455,28 +466,41 @@ class ManHinhDanhMucCoSo(ttk.Frame):
         ttk.Button(duoi, text='Lưu thông tin', style='KTX.Primary.TButton',
                    command=luu).pack(side='right', padx=(0, 8))
 
-    def thao_tac_trang_thai(self, ham, mo_ta):
+    def luu_tru(self) -> None:
         ma = self.lay_ma_chon()
         if ma is None:
             return
-        if not messagebox.askyesno('Xác nhận', f'{mo_ta} mã {ma}?',
-                                   parent=self.winfo_toplevel()):
+        if not messagebox.askyesno('Xác nhận', f'Lưu trữ mã {ma}?', parent=self.winfo_toplevel()):
             return
         try:
-            getattr(self.adapter, ham)(self.LOAI, ma)
+            self.app.yeu_cau_admin()
+            thuc_the = self.app.dieu_phoi.lay_theo_ma(self.LOAI, ma)
+            self.app.dieu_phoi.luu_tru(thuc_the)
             self.tai_du_lieu()
-        except Exception as exc:
-            messagebox.showerror('Lỗi thao tác', str(exc), parent=self.winfo_toplevel())
+        except Exception as e:
+            messagebox.showerror('Lỗi lưu trữ', str(e), parent=self.winfo_toplevel())
 
-    def luu_tru(self):
-        self.thao_tac_trang_thai('luu_tru', 'Lưu trữ')
-
-    def tai_kich_hoat(self):
-        self.thao_tac_trang_thai('tai_kich_hoat', 'Khôi phục')
-
-    def xoa(self):
+    def tai_kich_hoat(self) -> None:
         ma = self.lay_ma_chon()
         if ma is None:
+            return
+        if not messagebox.askyesno('Xác nhận', f'Khôi phục mã {ma}?', parent=self.winfo_toplevel()):
+            return
+        try:
+            self.app.yeu_cau_admin()
+            thuc_the_luu_tru_duoc = self.app.dieu_phoi.lay_theo_ma(self.LOAI, ma, True)
+            self.app.dieu_phoi.tai_kich_hoat(thuc_the_luu_tru_duoc) # type: ignore
+            self.tai_du_lieu()
+        except Exception as e:
+            messagebox.showerror('Lỗi khôi phục', str(e), parent=self.winfo_toplevel())
+
+    def xoa(self):
+        self.app.yeu_cau_admin()
+        self.app._cam_tai_khoan(self.LOAI)
+        ma = self.lay_ma_chon()
+        if ma is None:
+            return
+        if not messagebox.askyesno('Xác nhận', f'Xóa mã {ma}?', parent=self.winfo_toplevel()):
             return
         if not messagebox.askyesno(
                 'Xác nhận xóa vĩnh viễn',
@@ -484,7 +508,8 @@ class ManHinhDanhMucCoSo(ttk.Frame):
                 parent=self.winfo_toplevel()):
             return
         try:
-            self.adapter.xoa(self.LOAI, ma, ep_xoa=True)
+            thuc_the = self.app.dieu_phoi.lay_theo_ma(self.LOAI, ma, True)
+            self.app.dieu_phoi.xoa(thuc_the, True)
             self.tai_du_lieu()
         except Exception as exc:
             messagebox.showerror('Lỗi xóa', str(exc), parent=self.winfo_toplevel())

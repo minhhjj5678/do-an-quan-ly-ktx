@@ -17,17 +17,7 @@ from thuc_the.tai_khoan import TaiKhoan
 from thuc_the.vi_pham import ViPham
 
 def main():
-    kho_luu_tru = {
-        SinhVien: LuuTruSinhVien(),
-        Phong: LuuTruPhong(),
-        ToaNha: LuuTruToaNha(),
-        HopDong: LuuTruHopDong(),
-        HoaDonThang: LuuTruHoaDonThang(),
-        ViPham: LuuTruViPham(),
-        TaiKhoan: LuuTruTaiKhoan(),
-        Tinh: LuuTruDiaLy()
-    }
-    dp = DieuPhoiKTX(kho_luu_tru, LuuTruCauHinh())
+    dp = DieuPhoiKTX()
     phien = PhienLamViec(dp)
     app = App(dp, phien)
     app.mainloop()

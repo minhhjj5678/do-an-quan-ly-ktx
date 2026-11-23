@@ -16,10 +16,10 @@ from ..dung_chung.mau_sac import lay_mau
 
 
 class ManHinhTaiKhoan(ttk.Frame):
-    def __init__(self, parent, adapter):
+    def __init__(self, parent, app):
         super().__init__(parent, padding=0)
-        self.adapter = adapter
-        self.la_quan_tri = bool(self.adapter.la_admin())
+        self.app = app
+        self.la_quan_tri = bool(self.app.la_admin())
 
         # Dữ liệu tài khoản luôn đọc từ backend thật, không cache giả lập.
         self.ds_tai_khoan = {}
@@ -181,9 +181,7 @@ class ManHinhTaiKhoan(ttk.Frame):
         if not hasattr(self, 'bang'):
             return
         try:
-            kho = self.adapter.lay_tat_ca(
-                TaiKhoan, lay_luu_tru=self.hien_luu_tru.get()
-            )
+            kho = self.app.dieu_phoi.lay_tat_ca(TaiKhoan, lay_luu_tru=self.hien_luu_tru.get())
         except Exception as exc:
             messagebox.showerror('Lỗi tải tài khoản', str(exc), parent=self.winfo_toplevel())
             return
@@ -322,9 +320,9 @@ class ManHinhTaiKhoan(ttk.Frame):
 
         # Cả tài khoản đã ngừng cũng giữ liên kết ma_chu_the, tránh cấp trùng.
         try:
-            tk_da_co = self.adapter.lay_tat_ca(TaiKhoan, lay_luu_tru=True)
+            tk_da_co = self.app.dieu_phoi.lay_tat_ca(TaiKhoan, lay_luu_tru=True)
             ma_da_co = {tk.ma_chu_the for tk in tk_da_co.values() if tk.ma_chu_the}
-            sinh_vien = self.adapter.lay_tat_ca(SinhVien)
+            sinh_vien = self.app.dieu_phoi.lay_tat_ca(SinhVien)
             sv_chua_co = {f'{sv.ten} ({ma})': ma for ma, sv in
                          sorted(sinh_vien.items(), key=lambda item: str(item[1].ten).casefold())
                          if ma not in ma_da_co}
@@ -400,7 +398,7 @@ class ManHinhTaiKhoan(ttk.Frame):
             ):
                 return
             try:
-                self.adapter.tao_tai_khoan(ten, ten, loai, ma_chu_the)
+                self.app.phien.tao_tai_khoan(ten, ten, loai, ma_chu_the)
                 self.tai_du_lieu(self.txt_tim.get())
                 messagebox.showinfo('Thành công',
                                     f'Đã tạo tài khoản {ten}.',
@@ -490,7 +488,7 @@ class ManHinhTaiKhoan(ttk.Frame):
                                        'với Phần C trước khi đặt lại.', parent=cua_so)
                 return
             try:
-                self.adapter.doi_mat_khau(mat_khau_moi=ten, tai_khoan=ten)
+                self.app.phien.doi_mat_khau(mat_khau_moi=ten, tai_khoan=ten)
                 messagebox.showinfo('Thành công', 'Đã đặt lại mật khẩu', parent=cua_so)
             except Exception as exc:
                 messagebox.showerror('Lỗi đặt lại mật khẩu', str(exc), parent=cua_so)
@@ -518,7 +516,8 @@ class ManHinhTaiKhoan(ttk.Frame):
                                            f'Bạn muốn {mo_ta} tài khoản {ten}?', parent=cua_so):
                     return
                 try:
-                    getattr(self.adapter, ten_ham)(ten)
+                    getattr(self.app.phien, ten_ham)(ten)
+
                     self.tai_du_lieu(self.txt_tim.get())
                     hien_nut()
                     bien_trang_thai.set(
@@ -546,7 +545,7 @@ class ManHinhTaiKhoan(ttk.Frame):
         ):
             return
         try:
-            self.adapter.xoa_tai_khoan(ten)
+            self.app.phien.xoa_tai_khoan(ten)
             self.tai_du_lieu()
             messagebox.showinfo(
                 'Thành công', f'Đã xóa tài khoản {ten}.',

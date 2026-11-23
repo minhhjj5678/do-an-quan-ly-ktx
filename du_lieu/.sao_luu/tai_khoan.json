@@ -1,79 +1,86 @@
 [
   {
     "ma": "admin",
-    "mat_khau_bam": "pbkdf2_sha256$200000$a7fecf92fcb2d690a27a92e475b2e1ad$5781fd607a6a905414246ab38d414e59f21db8be9ed00a08d7b6db7075f6d0fe",
+    "mat_khau_bam": "pbkdf2_sha256$200000$710a251b873d45b7d28e1c42d563e308$a447e33f281f2e268490782579ec33dd63ab381e1aaba15f5ba9edf2ad7a55f5",
     "loai_tai_khoan": "QUAN_TRI_VIEN",
     "ma_chu_the": null,
     "con_hoat_dong": true
   },
   {
     "ma": "sv0001",
-    "mat_khau_bam": "pbkdf2_sha256$200000$bd919f8ac03965214f267d1bbc7bc259$a68ca5b9e44fc53f457e23b0fa3ec889c63fbc139cb12214be6385e8cf9be8d8",
+    "mat_khau_bam": "pbkdf2_sha256$200000$150d81d759513d567733500c9f4083e3$fc34e4db6c52e9bfd87a93cc8c17f460640b8b20c95c056ac2c2e2b905972b24",
     "loai_tai_khoan": "SINH_VIEN",
     "ma_chu_the": "SV0001",
-    "con_hoat_dong": true
+    "con_hoat_dong": false
   },
   {
     "ma": "sv0002",
-    "mat_khau_bam": "pbkdf2_sha256$200000$ffe64f2cd0a2991bb5720483467a4957$9c07b23a2cd32b6cebc4be789bac19d33d8c82c15eadf5a0d5d30db2704f9d95",
+    "mat_khau_bam": "pbkdf2_sha256$200000$c3ebbe2c8f4d6a7057e77c8056ffc749$00e8405038f9188480f21f89a6ab0de06be258d4a75d63589625884967d9bd6f",
     "loai_tai_khoan": "SINH_VIEN",
     "ma_chu_the": "SV0002",
     "con_hoat_dong": true
   },
   {
     "ma": "sv0003",
-    "mat_khau_bam": "pbkdf2_sha256$200000$685db710e777727e4a529ae1a750ab08$033752136d0baa3784d87ab7314b395091e9381bf468859baa5f71b08ca5fd0f",
+    "mat_khau_bam": "pbkdf2_sha256$200000$9e390a6c3b0ff12dd480388e9aefe847$efa3b108e88d4225712e78c0721605da538e1cc63bc41a26d8b1280a5e74ca57",
     "loai_tai_khoan": "SINH_VIEN",
     "ma_chu_the": "SV0003",
     "con_hoat_dong": true
   },
   {
     "ma": "sv0004",
-    "mat_khau_bam": "pbkdf2_sha256$200000$dca012464560cb2d3e3ad6a807c96d17$7dae37cbcd66796270ff418d6044b7441bbf4e9d293a0474f7d1d9726544cdba",
+    "mat_khau_bam": "pbkdf2_sha256$200000$d1fdf4592b1e143580e02722cc6bbdec$20a397102a19e7ea6989a6271392ddab8be5ec3ba9211438ba6c8a4d6433fe63",
     "loai_tai_khoan": "SINH_VIEN",
     "ma_chu_the": "SV0004",
-    "con_hoat_dong": true
+    "con_hoat_dong": false
   },
   {
     "ma": "sv0005",
-    "mat_khau_bam": "pbkdf2_sha256$200000$99564cb6222f8ae7de0874608558b74d$22b9c6ad7bf09ea040a142f87977f5fbe60dba8d3756cd82338e77db762528f6",
+    "mat_khau_bam": "pbkdf2_sha256$200000$c6575ddc173a3ad3cb538d038d6de984$8f080eefaac766a08dd7bec33676000745e030b5e63a6d26b41515d4cc16f20a",
     "loai_tai_khoan": "SINH_VIEN",
     "ma_chu_the": "SV0005",
     "con_hoat_dong": true
   },
   {
     "ma": "sv0006",
-    "mat_khau_bam": "pbkdf2_sha256$200000$dceb93788535f247214e13cc10106a67$636a683e60dec34dba59fac07de8b6801b8fb089268dfe4b8b8c67a88a1156c4",
+    "mat_khau_bam": "pbkdf2_sha256$200000$68c30be25a5c451f49b38ce2f05a003e$fd6558d8caac6ef34f7fedb8693d9836921158d5f885cc277bb54ecf2e9eefd7",
     "loai_tai_khoan": "SINH_VIEN",
     "ma_chu_the": "SV0006",
     "con_hoat_dong": true
   },
   {
     "ma": "sv0007",
-    "mat_khau_bam": "pbkdf2_sha256$200000$9bbe4ae17de0c9b0de74b974236f19b5$8ca416616a9f839e1982f4e67b857621290dc1bfc83bf99477ef421e3e69f3f7",
+    "mat_khau_bam": "pbkdf2_sha256$200000$f324dac62f13efa912b874ab6cc5052c$4f6fb303062780a76034f4e8b4589853a49b99b54c3e66c023b7faa76c9ceedd",
     "loai_tai_khoan": "SINH_VIEN",
     "ma_chu_the": "SV0007",
     "con_hoat_dong": true
   },
   {
     "ma": "sv0008",
-    "mat_khau_bam": "pbkdf2_sha256$200000$4e98330ab6a627a982a5ad22ef11c6f2$dd32b0c31b67a0f04878c0ef2a5e9f56a0939166a51872fe37a71c2e4f5bcaaa",
+    "mat_khau_bam": "pbkdf2_sha256$200000$fc8175b263517371d7cf22b234342580$87cc7c02678318b4585a62422ac543e2602a2c13dfca767437a327cb2017489a",
     "loai_tai_khoan": "SINH_VIEN",
     "ma_chu_the": "SV0008",
     "con_hoat_dong": true
   },
   {
     "ma": "sv0009",
-    "mat_khau_bam": "pbkdf2_sha256$200000$fafaa207655395722b5aad79ef4e6d19$4736b764669358d722727eee58dec5d0be9150d9efca28794621bf85df7b31f8",
+    "mat_khau_bam": "pbkdf2_sha256$200000$0f0fffe38ad7fa26669ed1fa187ccc8f$a676836f6233ce03c993b025d70c93a781efc59aebd452214d5b6fec40e359ef",
     "loai_tai_khoan": "SINH_VIEN",
     "ma_chu_the": "SV0009",
     "con_hoat_dong": true
   },
   {
     "ma": "sv0010",
-    "mat_khau_bam": "pbkdf2_sha256$200000$238f13ae01b66f85cf2963c7531e9713$403ce230fcae3abc486d7ad62c57fb02faed283f631d668752a42419059779c9",
+    "mat_khau_bam": "pbkdf2_sha256$200000$fdbc2ae02af2cfc2948bc9c64f5f4c20$f531333af4ef2296b8b3fa3507b1eb98d3052f701843662e670f39a9ef4a0ccd",
     "loai_tai_khoan": "SINH_VIEN",
     "ma_chu_the": "SV0010",
+    "con_hoat_dong": true
+  },
+  {
+    "ma": "SV0016",
+    "mat_khau_bam": "pbkdf2_sha256$200000$36fcbd178dbc8231f11c47c48790d0d4$6dabc670236fd46d60021bef3fc00363a39dceacb1a759515aaeb6f7f814066b",
+    "loai_tai_khoan": "SINH_VIEN",
+    "ma_chu_the": "SV0016",
     "con_hoat_dong": true
   }
 ]

@@ -10,10 +10,9 @@
 # Việc đổi qua lại nằm ở tầng lưu trữ nên KHÔNG phải sửa gì trong package thuc_the/ (thuộc phần B).
 import json
 import os
-from abc import abstractmethod
-from typing import Any
+from abc import ABC, abstractmethod
+from typing import Any, Generic, TypeVar
 
-from giao_thuc.luu_tru import GiaoThucLuuTru, T
 from thuc_the.thuc_the_goc import ThucTheGoc, ThucTheLuuTruDuoc
 from tien_ich.tap_tin import (
     lay_duong_dan_dau_thoi_gian,
@@ -21,6 +20,7 @@ from tien_ich.tap_tin import (
     lay_duong_dan_sao_luu,
 )
 
+T = TypeVar("T", bound=ThucTheGoc)
 
 def khoi_phuc_hoat_dong(thuc_the: ThucTheLuuTruDuoc, con_hoat_dong: bool) -> None:
     """Thực thể mới tạo luôn đang hoạt động; nếu trong file ghi đã lưu trữ thì gọi luu_tru() để đưa về đúng trạng thái."""
@@ -42,7 +42,7 @@ def ghi_nguyen_tu(duong_dan: str, noi_dung: str) -> None:
     os.replace(duong_dan_tam, duong_dan)
 
 
-class LuuTruJson(GiaoThucLuuTru[T]):
+class LuuTruJson(ABC, Generic[T]):
     # Các lớp con BẮT BUỘC khai báo hai thuộc tính này
     TEN_FILE: str
     LOAI: type[ThucTheGoc]
