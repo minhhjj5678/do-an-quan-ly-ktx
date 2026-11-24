@@ -406,7 +406,9 @@ class ManHinhDanhMucCoSo(ttk.Frame):
 
         o_nhap = {}
         for truong in self.thu_tu_truong_form():
-            if not sua and (self._la_truong_ma_chinh(truong) or truong in self.TRUONG_CHI_DOC_KHI_TAO):
+            if self._la_truong_ma_chinh(truong):
+                continue
+            if not sua and truong in self.TRUONG_CHI_DOC_KHI_TAO:
                 continue
             ttk.Label(form, text=self.ten_truong(truong)).pack(anchor='w', pady=(10, 4))
             o = self.tao_o_nhap(form, truong, du_lieu.get(truong, ''))
@@ -420,8 +422,8 @@ class ManHinhDanhMucCoSo(ttk.Frame):
             try:
                 data = {ten: o.get().strip() for ten, o in o_nhap.items()}
                 data = self.chuan_hoa_du_lieu_form(data, o_nhap)
-                if sua:
-                    data = {k: v for k, v in data.items() if not self._chi_doc(k)}
+                # if sua:
+                #     data = {k: v for k, v in data.items() if not self._chi_doc(k)}
                 
                 for ten in self.BAT_BUOC:
                     if not sua and self._la_truong_ma_chinh(ten):
@@ -432,6 +434,7 @@ class ManHinhDanhMucCoSo(ttk.Frame):
                 data = {ten: self._chuyen_kieu(ten, val) for ten, val in data.items()}
                 if sua and ma_cu is not None:
                     thuc_the = self.LOAI(ma_cu, **data) # type: ignore
+                        
                     self.app.dieu_phoi.cap_nhat(thuc_the)
                 else:
                     # Kiểm tra chữ ký __init__ để loại bỏ các trường mã tự sinh rỗng/không hợp lệ
