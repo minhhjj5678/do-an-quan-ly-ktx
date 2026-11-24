@@ -128,7 +128,7 @@ def la_ten_dang_nhap(x: str) -> bool:
     return isinstance(x, str) and re.fullmatch(r"[A-Za-z0-9_.]{3,30}", x) is not None
 
 
-# Tối thiểu 5 ký tự; chỉ gồm chữ cái tiếng Anh không dấu, chữ số, _ và -
+# Tối thiểu 5 ký tự; chỉ gồm chữ cái tiếng Anh không dấu và chữ số
 _MAT_KHAU = re.compile(r"[A-Za-z0-9]{5,}")
 
 def la_mat_khau(mat_khau: str) -> bool:
