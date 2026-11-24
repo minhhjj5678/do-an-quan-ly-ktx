@@ -3,22 +3,18 @@
 from datetime import date
 from typing import Any
 
-from giao_thuc.luu_tru import GiaoThucLuuTru
-from luu_tru.luu_tru_json import (co_bi_chinh_sua, doc_json, ghi_json, kiem_tra_danh_sach_ghi, kiem_tra_truoc_khi_doc)
+from luu_tru.luu_tru_json import (LuuTruJson, co_bi_chinh_sua, doc_json, ghi_json, kiem_tra_danh_sach_ghi, kiem_tra_truoc_khi_doc)
 from thuc_the.tai_chinh import HoaDonThang, ThangNam, TrangThaiHoaDon
 from tien_ich.cau_hinh_tinh import FILE_HOA_DON_THANG
 from tien_ich.tap_tin import lay_duong_dan_du_lieu, lay_duong_dan_sao_luu
 
 
-class LuuTruHoaDonThang(GiaoThucLuuTru[HoaDonThang]):
+class LuuTruHoaDonThang(LuuTruJson[HoaDonThang]):
     TEN_FILE = FILE_HOA_DON_THANG
+    LOAI = HoaDonThang
 
     def __init__(self) -> None:
         self._da_kiem_tra_khoi_dong = False  # chỉ kiểm tra "bị sửa ngoài app" ở lần doc() đầu
-
-    @property
-    def loai_thuc_the(self) -> type[HoaDonThang]:
-        return HoaDonThang
 
     def _doc_file(self, duong_dan: str) -> dict[str, HoaDonThang]:
         ket_qua: dict[str, HoaDonThang] = {}

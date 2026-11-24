@@ -3,7 +3,7 @@
     "ma": "P0001",
     "ten": "Phòng A101",
     "suc_chua": 4,
-    "gia_phong": 2400000.0,
+    "gia_phong": 600000.0,
     "toa_nha": "TN0001",
     "tang": 1,
     "con_hoat_dong": true
@@ -12,7 +12,7 @@
     "ma": "P0002",
     "ten": "Phòng A102",
     "suc_chua": 6,
-    "gia_phong": 2700000.0,
+    "gia_phong": 450000.0,
     "toa_nha": "TN0001",
     "tang": 1,
     "con_hoat_dong": true
@@ -21,7 +21,7 @@
     "ma": "P0003",
     "ten": "Phòng A103",
     "suc_chua": 6,
-    "gia_phong": 2700000.0,
+    "gia_phong": 450000.0,
     "toa_nha": "TN0001",
     "tang": 1,
     "con_hoat_dong": true
@@ -30,7 +30,7 @@
     "ma": "P0004",
     "ten": "Phòng A104",
     "suc_chua": 4,
-    "gia_phong": 2400000.0,
+    "gia_phong": 600000.0,
     "toa_nha": "TN0001",
     "tang": 1,
     "con_hoat_dong": true
@@ -39,7 +39,7 @@
     "ma": "P0005",
     "ten": "Phòng A105",
     "suc_chua": 4,
-    "gia_phong": 2400000.0,
+    "gia_phong": 600000.0,
     "toa_nha": "TN0001",
     "tang": 1,
     "con_hoat_dong": true
@@ -48,7 +48,7 @@
     "ma": "P0006",
     "ten": "Phòng A106",
     "suc_chua": 6,
-    "gia_phong": 2700000.0,
+    "gia_phong": 450000.0,
     "toa_nha": "TN0001",
     "tang": 1,
     "con_hoat_dong": true
@@ -57,7 +57,7 @@
     "ma": "P0007",
     "ten": "Phòng A201",
     "suc_chua": 8,
-    "gia_phong": 2800000.0,
+    "gia_phong": 350000.0,
     "toa_nha": "TN0001",
     "tang": 2,
     "con_hoat_dong": true
@@ -66,7 +66,7 @@
     "ma": "P0008",
     "ten": "Phòng A202",
     "suc_chua": 8,
-    "gia_phong": 2800000.0,
+    "gia_phong": 350000.0,
     "toa_nha": "TN0001",
     "tang": 2,
     "con_hoat_dong": true
@@ -75,7 +75,7 @@
     "ma": "P0009",
     "ten": "Phòng A203",
     "suc_chua": 8,
-    "gia_phong": 2800000.0,
+    "gia_phong": 350000.0,
     "toa_nha": "TN0001",
     "tang": 2,
     "con_hoat_dong": true
@@ -84,7 +84,7 @@
     "ma": "P0010",
     "ten": "Phòng A204",
     "suc_chua": 6,
-    "gia_phong": 2700000.0,
+    "gia_phong": 450000.0,
     "toa_nha": "TN0001",
     "tang": 2,
     "con_hoat_dong": false
@@ -93,7 +93,7 @@
     "ma": "P0011",
     "ten": "Phòng A301",
     "suc_chua": 8,
-    "gia_phong": 2800000.0,
+    "gia_phong": 350000.0,
     "toa_nha": "TN0001",
     "tang": 3,
     "con_hoat_dong": true
@@ -102,7 +102,7 @@
     "ma": "P0012",
     "ten": "Phòng A302",
     "suc_chua": 6,
-    "gia_phong": 2700000.0,
+    "gia_phong": 450000.0,
     "toa_nha": "TN0001",
     "tang": 3,
     "con_hoat_dong": true
@@ -111,7 +111,7 @@
     "ma": "P0013",
     "ten": "Phòng A303",
     "suc_chua": 6,
-    "gia_phong": 2700000.0,
+    "gia_phong": 450000.0,
     "toa_nha": "TN0001",
     "tang": 3,
     "con_hoat_dong": true
@@ -120,7 +120,7 @@
     "ma": "P0014",
     "ten": "Phòng A304",
     "suc_chua": 8,
-    "gia_phong": 2800000.0,
+    "gia_phong": 350000.0,
     "toa_nha": "TN0001",
     "tang": 3,
     "con_hoat_dong": true
@@ -129,7 +129,7 @@
     "ma": "P0015",
     "ten": "Phòng B101",
     "suc_chua": 8,
-    "gia_phong": 2800000.0,
+    "gia_phong": 350000.0,
     "toa_nha": "TN0002",
     "tang": 1,
     "con_hoat_dong": true
@@ -138,7 +138,7 @@
     "ma": "P0016",
     "ten": "Phòng B102",
     "suc_chua": 4,
-    "gia_phong": 2400000.0,
+    "gia_phong": 600000.0,
     "toa_nha": "TN0002",
     "tang": 1,
     "con_hoat_dong": true
@@ -147,7 +147,7 @@
     "ma": "P0017",
     "ten": "Phòng B103",
     "suc_chua": 6,
-    "gia_phong": 2700000.0,
+    "gia_phong": 450000.0,
     "toa_nha": "TN0002",
     "tang": 1,
     "con_hoat_dong": true
@@ -156,7 +156,7 @@
     "ma": "P0018",
     "ten": "Phòng B104",
     "suc_chua": 4,
-    "gia_phong": 2400000.0,
+    "gia_phong": 600000.0,
     "toa_nha": "TN0002",
     "tang": 1,
     "con_hoat_dong": true
@@ -165,7 +165,7 @@
     "ma": "P0019",
     "ten": "Phòng B105",
     "suc_chua": 8,
-    "gia_phong": 2800000.0,
+    "gia_phong": 350000.0,
     "toa_nha": "TN0002",
     "tang": 1,
     "con_hoat_dong": true
@@ -174,7 +174,7 @@
     "ma": "P0020",
     "ten": "Phòng B201",
     "suc_chua": 4,
-    "gia_phong": 2400000.0,
+    "gia_phong": 600000.0,
     "toa_nha": "TN0002",
     "tang": 2,
     "con_hoat_dong": true
@@ -183,7 +183,7 @@
     "ma": "P0021",
     "ten": "Phòng B202",
     "suc_chua": 8,
-    "gia_phong": 2800000.0,
+    "gia_phong": 350000.0,
     "toa_nha": "TN0002",
     "tang": 2,
     "con_hoat_dong": true
@@ -192,7 +192,7 @@
     "ma": "P0022",
     "ten": "Phòng B203",
     "suc_chua": 4,
-    "gia_phong": 2400000.0,
+    "gia_phong": 600000.0,
     "toa_nha": "TN0002",
     "tang": 2,
     "con_hoat_dong": true
@@ -201,7 +201,7 @@
     "ma": "P0023",
     "ten": "Phòng B204",
     "suc_chua": 8,
-    "gia_phong": 2800000.0,
+    "gia_phong": 350000.0,
     "toa_nha": "TN0002",
     "tang": 2,
     "con_hoat_dong": true
@@ -210,7 +210,7 @@
     "ma": "P0024",
     "ten": "Phòng B301",
     "suc_chua": 6,
-    "gia_phong": 2700000.0,
+    "gia_phong": 450000.0,
     "toa_nha": "TN0002",
     "tang": 3,
     "con_hoat_dong": true
@@ -219,7 +219,7 @@
     "ma": "P0025",
     "ten": "Phòng B302",
     "suc_chua": 8,
-    "gia_phong": 2800000.0,
+    "gia_phong": 350000.0,
     "toa_nha": "TN0002",
     "tang": 3,
     "con_hoat_dong": true
@@ -228,7 +228,7 @@
     "ma": "P0026",
     "ten": "Phòng B303",
     "suc_chua": 6,
-    "gia_phong": 2700000.0,
+    "gia_phong": 450000.0,
     "toa_nha": "TN0002",
     "tang": 3,
     "con_hoat_dong": true
@@ -237,7 +237,7 @@
     "ma": "P0027",
     "ten": "Phòng B304",
     "suc_chua": 6,
-    "gia_phong": 2700000.0,
+    "gia_phong": 450000.0,
     "toa_nha": "TN0002",
     "tang": 3,
     "con_hoat_dong": true
@@ -246,7 +246,7 @@
     "ma": "P0028",
     "ten": "Phòng B305",
     "suc_chua": 8,
-    "gia_phong": 2800000.0,
+    "gia_phong": 350000.0,
     "toa_nha": "TN0002",
     "tang": 3,
     "con_hoat_dong": true
@@ -255,7 +255,7 @@
     "ma": "P0029",
     "ten": "Phòng B306",
     "suc_chua": 4,
-    "gia_phong": 2400000.0,
+    "gia_phong": 600000.0,
     "toa_nha": "TN0002",
     "tang": 3,
     "con_hoat_dong": true
@@ -264,7 +264,7 @@
     "ma": "P0030",
     "ten": "Phòng B401",
     "suc_chua": 6,
-    "gia_phong": 2700000.0,
+    "gia_phong": 450000.0,
     "toa_nha": "TN0002",
     "tang": 4,
     "con_hoat_dong": true
@@ -273,7 +273,7 @@
     "ma": "P0031",
     "ten": "Phòng B402",
     "suc_chua": 4,
-    "gia_phong": 2400000.0,
+    "gia_phong": 600000.0,
     "toa_nha": "TN0002",
     "tang": 4,
     "con_hoat_dong": true
@@ -282,7 +282,7 @@
     "ma": "P0032",
     "ten": "Phòng B403",
     "suc_chua": 8,
-    "gia_phong": 2800000.0,
+    "gia_phong": 350000.0,
     "toa_nha": "TN0002",
     "tang": 4,
     "con_hoat_dong": true
@@ -291,7 +291,7 @@
     "ma": "P0033",
     "ten": "Phòng B404",
     "suc_chua": 8,
-    "gia_phong": 2800000.0,
+    "gia_phong": 350000.0,
     "toa_nha": "TN0002",
     "tang": 4,
     "con_hoat_dong": true
@@ -300,7 +300,7 @@
     "ma": "P0034",
     "ten": "Phòng B405",
     "suc_chua": 6,
-    "gia_phong": 2700000.0,
+    "gia_phong": 450000.0,
     "toa_nha": "TN0002",
     "tang": 4,
     "con_hoat_dong": true
@@ -309,7 +309,7 @@
     "ma": "P0035",
     "ten": "Phòng B406",
     "suc_chua": 4,
-    "gia_phong": 2400000.0,
+    "gia_phong": 600000.0,
     "toa_nha": "TN0002",
     "tang": 4,
     "con_hoat_dong": true
@@ -318,7 +318,7 @@
     "ma": "P0036",
     "ten": "Phòng C101",
     "suc_chua": 6,
-    "gia_phong": 2700000.0,
+    "gia_phong": 450000.0,
     "toa_nha": "TN0003",
     "tang": 1,
     "con_hoat_dong": true
@@ -327,7 +327,7 @@
     "ma": "P0037",
     "ten": "Phòng C102",
     "suc_chua": 4,
-    "gia_phong": 2400000.0,
+    "gia_phong": 600000.0,
     "toa_nha": "TN0003",
     "tang": 1,
     "con_hoat_dong": true
@@ -336,7 +336,7 @@
     "ma": "P0038",
     "ten": "Phòng C103",
     "suc_chua": 6,
-    "gia_phong": 2700000.0,
+    "gia_phong": 450000.0,
     "toa_nha": "TN0003",
     "tang": 1,
     "con_hoat_dong": true
@@ -345,7 +345,7 @@
     "ma": "P0039",
     "ten": "Phòng C104",
     "suc_chua": 8,
-    "gia_phong": 2800000.0,
+    "gia_phong": 350000.0,
     "toa_nha": "TN0003",
     "tang": 1,
     "con_hoat_dong": true
@@ -354,7 +354,7 @@
     "ma": "P0040",
     "ten": "Phòng C105",
     "suc_chua": 6,
-    "gia_phong": 2700000.0,
+    "gia_phong": 450000.0,
     "toa_nha": "TN0003",
     "tang": 1,
     "con_hoat_dong": true
@@ -363,7 +363,7 @@
     "ma": "P0041",
     "ten": "Phòng C201",
     "suc_chua": 8,
-    "gia_phong": 2800000.0,
+    "gia_phong": 350000.0,
     "toa_nha": "TN0003",
     "tang": 2,
     "con_hoat_dong": true
@@ -372,7 +372,7 @@
     "ma": "P0042",
     "ten": "Phòng C202",
     "suc_chua": 4,
-    "gia_phong": 2400000.0,
+    "gia_phong": 600000.0,
     "toa_nha": "TN0003",
     "tang": 2,
     "con_hoat_dong": true
@@ -381,7 +381,7 @@
     "ma": "P0043",
     "ten": "Phòng C203",
     "suc_chua": 8,
-    "gia_phong": 2800000.0,
+    "gia_phong": 350000.0,
     "toa_nha": "TN0003",
     "tang": 2,
     "con_hoat_dong": true
@@ -390,7 +390,7 @@
     "ma": "P0044",
     "ten": "Phòng C204",
     "suc_chua": 8,
-    "gia_phong": 2800000.0,
+    "gia_phong": 350000.0,
     "toa_nha": "TN0003",
     "tang": 2,
     "con_hoat_dong": true
@@ -399,7 +399,7 @@
     "ma": "P0045",
     "ten": "Phòng C301",
     "suc_chua": 6,
-    "gia_phong": 2700000.0,
+    "gia_phong": 450000.0,
     "toa_nha": "TN0003",
     "tang": 3,
     "con_hoat_dong": true
@@ -408,7 +408,7 @@
     "ma": "P0046",
     "ten": "Phòng C302",
     "suc_chua": 8,
-    "gia_phong": 2800000.0,
+    "gia_phong": 350000.0,
     "toa_nha": "TN0003",
     "tang": 3,
     "con_hoat_dong": true
@@ -417,7 +417,7 @@
     "ma": "P0047",
     "ten": "Phòng C303",
     "suc_chua": 6,
-    "gia_phong": 2700000.0,
+    "gia_phong": 450000.0,
     "toa_nha": "TN0003",
     "tang": 3,
     "con_hoat_dong": true
@@ -426,7 +426,7 @@
     "ma": "P0048",
     "ten": "Phòng C304",
     "suc_chua": 8,
-    "gia_phong": 2800000.0,
+    "gia_phong": 350000.0,
     "toa_nha": "TN0003",
     "tang": 3,
     "con_hoat_dong": true
@@ -435,7 +435,7 @@
     "ma": "P0049",
     "ten": "Phòng C305",
     "suc_chua": 4,
-    "gia_phong": 2400000.0,
+    "gia_phong": 600000.0,
     "toa_nha": "TN0003",
     "tang": 3,
     "con_hoat_dong": true
@@ -444,7 +444,7 @@
     "ma": "P0050",
     "ten": "Phòng C306",
     "suc_chua": 8,
-    "gia_phong": 2800000.0,
+    "gia_phong": 350000.0,
     "toa_nha": "TN0003",
     "tang": 3,
     "con_hoat_dong": true
@@ -453,7 +453,7 @@
     "ma": "P0051",
     "ten": "Phòng C401",
     "suc_chua": 8,
-    "gia_phong": 2800000.0,
+    "gia_phong": 350000.0,
     "toa_nha": "TN0003",
     "tang": 4,
     "con_hoat_dong": true
@@ -462,7 +462,7 @@
     "ma": "P0052",
     "ten": "Phòng C402",
     "suc_chua": 4,
-    "gia_phong": 2400000.0,
+    "gia_phong": 600000.0,
     "toa_nha": "TN0003",
     "tang": 4,
     "con_hoat_dong": true
@@ -471,7 +471,7 @@
     "ma": "P0053",
     "ten": "Phòng C403",
     "suc_chua": 4,
-    "gia_phong": 2400000.0,
+    "gia_phong": 600000.0,
     "toa_nha": "TN0003",
     "tang": 4,
     "con_hoat_dong": true
@@ -480,7 +480,7 @@
     "ma": "P0054",
     "ten": "Phòng C404",
     "suc_chua": 6,
-    "gia_phong": 2700000.0,
+    "gia_phong": 450000.0,
     "toa_nha": "TN0003",
     "tang": 4,
     "con_hoat_dong": true
@@ -489,7 +489,7 @@
     "ma": "P0055",
     "ten": "Phòng C501",
     "suc_chua": 8,
-    "gia_phong": 2800000.0,
+    "gia_phong": 350000.0,
     "toa_nha": "TN0003",
     "tang": 5,
     "con_hoat_dong": true
@@ -498,7 +498,7 @@
     "ma": "P0056",
     "ten": "Phòng C502",
     "suc_chua": 6,
-    "gia_phong": 2700000.0,
+    "gia_phong": 450000.0,
     "toa_nha": "TN0003",
     "tang": 5,
     "con_hoat_dong": true
@@ -507,7 +507,7 @@
     "ma": "P0057",
     "ten": "Phòng C503",
     "suc_chua": 4,
-    "gia_phong": 2400000.0,
+    "gia_phong": 600000.0,
     "toa_nha": "TN0003",
     "tang": 5,
     "con_hoat_dong": true
@@ -516,7 +516,7 @@
     "ma": "P0058",
     "ten": "Phòng C504",
     "suc_chua": 8,
-    "gia_phong": 2800000.0,
+    "gia_phong": 350000.0,
     "toa_nha": "TN0003",
     "tang": 5,
     "con_hoat_dong": true

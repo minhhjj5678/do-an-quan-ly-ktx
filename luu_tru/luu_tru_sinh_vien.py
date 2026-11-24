@@ -3,22 +3,18 @@
 # SinhVien không ghi phòng hay hợp đồng: quan hệ đó nằm ở HopDong (ma_sinh_vien, ma_phong).
 from typing import Any
 
-from giao_thuc.luu_tru import GiaoThucLuuTru
-from luu_tru.luu_tru_json import (co_bi_chinh_sua, doc_json, ghi_json, khoi_phuc_hoat_dong, kiem_tra_danh_sach_ghi, kiem_tra_truoc_khi_doc)
+from luu_tru.luu_tru_json import (LuuTruJson, co_bi_chinh_sua, doc_json, ghi_json, khoi_phuc_hoat_dong, kiem_tra_danh_sach_ghi, kiem_tra_truoc_khi_doc)
 from thuc_the.ky_tuc_xa import SinhVien
 from tien_ich.cau_hinh_tinh import FILE_SINH_VIEN
 from tien_ich.tap_tin import lay_duong_dan_du_lieu, lay_duong_dan_sao_luu
 
 
-class LuuTruSinhVien(GiaoThucLuuTru[SinhVien]):
+class LuuTruSinhVien(LuuTruJson[SinhVien]):
     TEN_FILE = FILE_SINH_VIEN
+    LOAI = SinhVien
 
     def __init__(self) -> None:
         self._da_kiem_tra_khoi_dong = False  # chỉ kiểm tra "bị sửa ngoài app" ở lần doc() đầu
-
-    @property
-    def loai_thuc_the(self) -> type[SinhVien]:
-        return SinhVien
 
     def _doc_file(self, duong_dan: str) -> dict[str, SinhVien]:
         ket_qua: dict[str, SinhVien] = {}

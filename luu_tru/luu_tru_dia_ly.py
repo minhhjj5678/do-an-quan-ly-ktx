@@ -4,7 +4,7 @@
 # Nguồn dữ liệu: API công cộng https://provinces.open-api.vn/ (bản v2 = sau sáp nhập 07/2025,
 # chỉ còn hai cấp Tỉnh -> Xã/Phường, khớp với dropdown tỉnh -> xã của màn hình sinh viên).
 #
-# Chiến lược (theo đúng thiết kế trong giao_thuc/luu_tru.py):
+# Chiến lược:
 #   1. doc(): chỉ đọc file cục bộ du_lieu/dia_ly.json (nhanh, không đụng tới mạng)
 #   2. File chính không dùng được -> tầng điều phối gọi doc_sao_luu(): đọc file sao lưu
 #   3. Sao lưu cũng hỏng/chưa có -> doc_sao_luu() đọc trực tiếp từ API (có timeout), lưu lại xuống file cho lần sau.
@@ -13,8 +13,7 @@ import json
 import urllib.request
 from typing import Any
 
-from giao_thuc.luu_tru import GiaoThucLuuTru
-from luu_tru.luu_tru_json import (co_bi_chinh_sua, doc_json, ghi_json,
+from luu_tru.luu_tru_json import (LuuTruJson, co_bi_chinh_sua, doc_json, ghi_json,
                                   kiem_tra_danh_sach_ghi, kiem_tra_truoc_khi_doc)
 from thuc_the.dia_ly import Tinh, Xa
 from tien_ich.cau_hinh_tinh import FILE_DIA_LY
@@ -25,15 +24,12 @@ URL_API = "https://provinces.open-api.vn/api/v2/?depth=2"
 THOI_GIAN_CHO_GIAY = 20
 
 
-class LuuTruDiaLy(GiaoThucLuuTru[Tinh]):
+class LuuTruDiaLy(LuuTruJson[Tinh]):
     TEN_FILE = FILE_DIA_LY
+    LOAI = Tinh
 
     def __init__(self) -> None:
         self._da_kiem_tra_khoi_dong = False  # chỉ kiểm tra "bị sửa ngoài app" ở lần doc() đầu
-
-    @property
-    def loai_thuc_the(self) -> type[Tinh]:
-        return Tinh
 
     # ---- Đọc / ghi file cục bộ ----
     def _doc_file(self, duong_dan: str) -> dict[str, Tinh]:

@@ -3,11 +3,13 @@
 #   ghi nguyên tử, đọc JSON thô, ghi file chính + sao lưu + dấu thời gian, phát hiện file bị sửa ngoài app.
 import json
 import os
-from typing import Any
+from abc import ABC, abstractmethod
+from typing import Any, Generic, TypeVar
 
 from thuc_the.thuc_the_goc import ThucTheGoc, ThucTheLuuTruDuoc
 from tien_ich.tap_tin import lay_duong_dan_dau_thoi_gian, lay_duong_dan_du_lieu, lay_duong_dan_sao_luu
 
+T = TypeVar("T", bound=ThucTheGoc)
 
 def khoi_phuc_hoat_dong(thuc_the: ThucTheLuuTruDuoc, con_hoat_dong: bool) -> None:
     """Thực thể mới tạo luôn hoạt động; nếu file ghi đã lưu trữ thì gọi luu_tru() để đúng trạng thái."""
@@ -23,6 +25,12 @@ def ghi_nguyen_tu(duong_dan: str, noi_dung: str) -> None:
         f.flush()
         os.fsync(f.fileno())
     os.replace(duong_dan_tam, duong_dan)
+
+
+class LuuTruJson(ABC, Generic[T]):
+    # Các lớp con BẮT BUỘC khai báo hai thuộc tính này
+    TEN_FILE: str
+    LOAI: type[ThucTheGoc]
 
 
 def co_bi_chinh_sua(ten_file: str) -> bool:

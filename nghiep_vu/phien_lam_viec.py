@@ -13,7 +13,7 @@
 # Xác thực dùng TaiKhoan.kiem_tra(mat_khau); đổi mật khẩu dùng TaiKhoan.doi_mat_khau().
 from functools import cache
 
-from giao_thuc.nghiep_vu import GiaoThucDieuPhoi, GiaoThucPhienLamViec
+from nghiep_vu.dieu_phoi import DieuPhoiKTX
 from thuc_the.tai_khoan import LoaiTaiKhoan, TaiKhoan
 from tien_ich.bam_mat_khau import bam_mat_khau, kiem_tra_mat_khau
 from tien_ich.regex import la_ma_sinh_vien, la_mat_khau, la_ten_dang_nhap
@@ -31,8 +31,12 @@ def _ma_bam_gia() -> str:
     return bam_mat_khau("mat-khau-gia-chi-de-can-thoi-gian")
 
 
-class PhienLamViec(GiaoThucPhienLamViec):
-    def __init__(self, dieu_phoi: GiaoThucDieuPhoi) -> None:
+class PhienLamViec:
+    """
+    Giao thức phiên làm việc của hệ thống.
+    Yêu cầu nhận vào một đối tượng GiaoThucDieuPhoi để thực hiện các thao tác nghiệp vụ liên quan đến tài khoản.
+    """
+    def __init__(self, dieu_phoi: DieuPhoiKTX) -> None:
         self._dieu_phoi = dieu_phoi
         self._tai_khoan_hien_tai: TaiKhoan | None = None  # None = chưa ai đăng nhập
 
@@ -77,6 +81,9 @@ class PhienLamViec(GiaoThucPhienLamViec):
     # ---- Giao thức ----
     @property
     def tai_khoan_hien_tai(self) -> TaiKhoan | None:
+        """
+        - Tài khoản đang sử dụng hiện tại.
+        """
         return self._tai_khoan_hien_tai
 
     def tao_tai_khoan(self, tai_khoan: str, mat_khau: str, loai_tai_khoan: LoaiTaiKhoan, ma_chu_the: str | None) -> None:

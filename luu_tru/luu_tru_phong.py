@@ -3,22 +3,18 @@
 # Phong chỉ chứa thông tin của chính nó; quan hệ với sinh viên (HopDong.ma_phong) và tòa nhà (Phong.toa_nha) nằm phía còn lại.
 from typing import Any
 
-from giao_thuc.luu_tru import GiaoThucLuuTru
-from luu_tru.luu_tru_json import (co_bi_chinh_sua, doc_json, ghi_json, khoi_phuc_hoat_dong, kiem_tra_danh_sach_ghi, kiem_tra_truoc_khi_doc)
+from luu_tru.luu_tru_json import (LuuTruJson, co_bi_chinh_sua, doc_json, ghi_json, khoi_phuc_hoat_dong, kiem_tra_danh_sach_ghi, kiem_tra_truoc_khi_doc)
 from thuc_the.ky_tuc_xa import Phong
 from tien_ich.cau_hinh_tinh import FILE_PHONG
 from tien_ich.tap_tin import lay_duong_dan_du_lieu, lay_duong_dan_sao_luu
 
 
-class LuuTruPhong(GiaoThucLuuTru[Phong]):
+class LuuTruPhong(LuuTruJson[Phong]):
     TEN_FILE = FILE_PHONG
+    LOAI = Phong
 
     def __init__(self) -> None:
         self._da_kiem_tra_khoi_dong = False  # chỉ kiểm tra "bị sửa ngoài app" ở lần doc() đầu
-
-    @property
-    def loai_thuc_the(self) -> type[Phong]:
-        return Phong
 
     def _doc_file(self, duong_dan: str) -> dict[str, Phong]:
         ket_qua: dict[str, Phong] = {}

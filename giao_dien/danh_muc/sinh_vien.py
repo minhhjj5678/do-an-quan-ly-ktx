@@ -1,8 +1,8 @@
-﻿from tkinter import ttk
+from tkinter import ttk
 
 from thuc_the.ky_tuc_xa import SinhVien
 from .danh_muc_co_so import ManHinhDanhMucCoSo
-from .dung_chung.ho_tro import hien_thi
+from ..dung_chung.ho_tro import hien_thi
 
 
 class ManHinhSinhVien(ManHinhDanhMucCoSo):
@@ -29,7 +29,7 @@ class ManHinhSinhVien(ManHinhDanhMucCoSo):
         setattr(cbo_xa, 'ma_theo_nhan', ma_xa_theo_nhan)
 
         try:
-            ds_tinh = self.adapter.dia_ly()
+            ds_tinh = self.app.dieu_phoi.danh_sach_dia_ly()
             # Adapter trả dict nếu không truyền mã tỉnh.
             if not isinstance(ds_tinh, dict) or not ds_tinh:
                 raise ValueError('Danh sách Tỉnh/Xã chưa được nạp. Hãy mở lại form sau khi tải xong.')

@@ -3,22 +3,18 @@
 # Chỉ lưu mật khẩu ĐÃ BĂM (mat_khau_bam), không bao giờ lưu mật khẩu gốc.
 from typing import Any
 
-from giao_thuc.luu_tru import GiaoThucLuuTru
-from luu_tru.luu_tru_json import (co_bi_chinh_sua, doc_json, ghi_json, khoi_phuc_hoat_dong, kiem_tra_danh_sach_ghi, kiem_tra_truoc_khi_doc)
+from luu_tru.luu_tru_json import (LuuTruJson, co_bi_chinh_sua, doc_json, ghi_json, khoi_phuc_hoat_dong, kiem_tra_danh_sach_ghi, kiem_tra_truoc_khi_doc)
 from thuc_the.tai_khoan import LoaiTaiKhoan, TaiKhoan
 from tien_ich.cau_hinh_tinh import FILE_TAI_KHOAN
 from tien_ich.tap_tin import lay_duong_dan_du_lieu, lay_duong_dan_sao_luu
 
 
-class LuuTruTaiKhoan(GiaoThucLuuTru[TaiKhoan]):
+class LuuTruTaiKhoan(LuuTruJson[TaiKhoan]):
     TEN_FILE = FILE_TAI_KHOAN
+    LOAI = TaiKhoan
 
     def __init__(self) -> None:
         self._da_kiem_tra_khoi_dong = False  # chỉ kiểm tra "bị sửa ngoài app" ở lần doc() đầu
-
-    @property
-    def loai_thuc_the(self) -> type[TaiKhoan]:
-        return TaiKhoan
 
     def _doc_file(self, duong_dan: str) -> dict[str, TaiKhoan]:
         ket_qua: dict[str, TaiKhoan] = {}
