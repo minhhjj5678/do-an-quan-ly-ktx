@@ -47,6 +47,12 @@ def co_bi_chinh_sua(ten_file: str) -> bool:
     return not os.path.exists(duong_dan_chinh) or os.stat(duong_dan_chinh).st_mtime_ns != da_luu
 
 
+def can_tao_file_moi(ten_file: str) -> bool:
+    """True khi cả file chính lẫn file sao lưu đều chưa tồn tại (chạy lần đầu): lúc đó tạo file rỗng thay vì báo lỗi."""
+    return (not os.path.exists(lay_duong_dan_du_lieu(ten_file))
+            and not os.path.exists(lay_duong_dan_sao_luu(ten_file)))
+
+
 def kiem_tra_truoc_khi_doc(ten_file: str, da_kiem_tra_khoi_dong: bool) -> None:
     """Dùng ở đầu doc(): FileNotFoundError nếu chưa có file; ValueError nếu bị sửa ngoài app (chỉ kiểm tra lần đầu)."""
     if not os.path.exists(lay_duong_dan_du_lieu(ten_file)):

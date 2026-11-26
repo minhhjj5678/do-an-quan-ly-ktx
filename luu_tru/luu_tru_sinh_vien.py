@@ -3,7 +3,7 @@
 # SinhVien không ghi phòng hay hợp đồng: quan hệ đó nằm ở HopDong (ma_sinh_vien, ma_phong).
 from typing import Any
 
-from luu_tru.luu_tru_json import (LuuTruJson, co_bi_chinh_sua, doc_json, ghi_json, khoi_phuc_hoat_dong, kiem_tra_danh_sach_ghi, kiem_tra_truoc_khi_doc)
+from luu_tru.luu_tru_json import (LuuTruJson, can_tao_file_moi, co_bi_chinh_sua, doc_json, ghi_json, khoi_phuc_hoat_dong, kiem_tra_danh_sach_ghi, kiem_tra_truoc_khi_doc)
 from thuc_the.ky_tuc_xa import SinhVien
 from tien_ich.cau_hinh_tinh import FILE_SINH_VIEN
 from tien_ich.tap_tin import lay_duong_dan_du_lieu, lay_duong_dan_sao_luu
@@ -37,6 +37,10 @@ class LuuTruSinhVien(LuuTruJson[SinhVien]):
         return ket_qua
 
     def doc_sao_luu(self) -> dict[str, SinhVien]:
+        # Chạy lần đầu (file chính lẫn sao lưu đều chưa có): tạo file rỗng, không báo lỗi
+        if can_tao_file_moi(self.TEN_FILE):
+            self.ghi({})
+            return {}
         return self._doc_file(lay_duong_dan_sao_luu(self.TEN_FILE))
 
     def ghi(self, danh_sach: dict[str, SinhVien]) -> None:
