@@ -1,4 +1,6 @@
 ﻿from datetime import date
+from enum import Enum
+import unicodedata
 import tkinter as tk
 from threading import Thread
 from tkinter import ttk, messagebox
@@ -7,10 +9,10 @@ from typing import Any, Callable, cast
 from nghiep_vu.dieu_phoi import DieuPhoiKTX
 from nghiep_vu.phien_lam_viec import PhienLamViec
 from thuc_the.ky_tuc_xa import Phong, SinhVien, ToaNha
-from thuc_the.tai_chinh import HoaDonThang, HopDong, TrangThaiHoaDon
+from thuc_the.tai_chinh import HoaDonThang, HopDong
 from thuc_the.tai_khoan import TaiKhoan, LoaiTaiKhoan
 from thuc_the.thuc_the_goc import ThucTheGoc
-from thuc_the.vi_pham import ViPham, TrangThaiViPham
+from thuc_the.vi_pham import ViPham
 
 from .xac_thuc.dang_nhap import ManHinhDangNhap
 from .xac_thuc.doi_mat_khau import ManHinhDoiMatKhau
@@ -373,15 +375,56 @@ class App(tk.Tk):
             xa = next((obj for obj in cac_xa.values() if str(getattr(obj, 'ma', '')) == ma_xa), None)
         return {'tinh': str(getattr(tinh, 'ten', ma_tinh)), 'xa': (str(getattr(xa, 'ten', ma_xa)) if xa is not None else f'Không tìm thấy xã (mã {ma_xa})' if ma_xa else 'Chưa có thông tin')}
 
+    @staticmethod
+    def _ten_trang_thai_ca_nhan(trang_thai):
+        """Chuẩn hóa trạng thái Enum hoặc chuỗi để so sánh không phụ thuộc dấu."""
+        if isinstance(trang_thai, Enum):
+            trang_thai = trang_thai.name
+        chuoi = unicodedata.normalize('NFD', str(trang_thai or '').casefold())
+        return ''.join(ky_tu for ky_tu in chuoi
+                       if unicodedata.category(ky_tu) != 'Mn').replace('đ', 'd').replace('_', ' ')
+
+    def _mau_trang_thai_ca_nhan(self, ten, obj):
+        """Chỉ tô màu các trạng thái cần nhấn mạnh như ở danh mục Admin."""
+        trang_thai = self._ten_trang_thai_ca_nhan(self._gia_tri_ca_nhan(obj, 'trang_thai'))
+        if ten == 'Hợp đồng':
+            if 'ket thuc' in trang_thai or 'het han' in trang_thai:
+                return 'do'
+            if 'da thanh toan' in trang_thai:
+                return 'xanh'
+        elif ten == 'Hóa đơn tháng':
+            if 'da thanh toan' in trang_thai:
+                return 'xanh'
+        elif ten == 'Vi phạm':
+            if 'chua xu ly' in trang_thai or 'chua xu li' in trang_thai:
+                return 'do'
+        return None
+
     def _cap_nhat_mau_ca_nhan(self):
         mau = lay_mau(self.chu_de_hien_tai)
+        la_toi = self.chu_de_hien_tai == 'DARK'
+        do_nen, do_chu = ('#67353B', '#FFF1F1') if la_toi else ('#FBE2E2', '#9F2525')
+        xanh_nen, xanh_chu = ('#244E42', '#E8FFF2') if la_toi else ('#DDF3E6', '#17623C')
+
         for bang in getattr(self, '_bang_sinh_vien', []):
             if bang.winfo_exists():
+                # Không xen kẽ màu xanh nhạt: mọi dòng bình thường cùng màu nền.
                 bang.tag_configure('chan', background=mau['the'], foreground=mau['chu'])
-                bang.tag_configure('le', background=mau['nhat'], foreground=mau['chu'])
+                bang.tag_configure('le', background=mau['the'], foreground=mau['chu'])
+                bang.tag_configure('do', background=do_nen, foreground=do_chu)
+                bang.tag_configure('xanh', background=xanh_nen, foreground=xanh_chu)
+
+        # Style cho những thẻ vi phạm chưa xử lý trong trang Sinh viên.
+        style = ttk.Style(self)
+        style.configure('KTX.ViPhamDo.TLabelframe', background=do_nen,
+                        bordercolor=do_chu)
+        # Tiêu đề thẻ giữ màu bình thường; chỉ phần nội dung vi phạm mới tô đỏ.
+        style.configure('KTX.ViPhamDo.TLabelframe.Label', background=mau['nen'],
+                        foreground=mau['chu'], font=('Segoe UI', 10, 'bold'))
+        style.configure('KTX.ViPhamDo.TLabel', background=do_nen, foreground=do_chu)
 
     def hien_thi_trang_sinh_vien(self, ten):
-        """Một mục menu / một trang chỉ xem; không tạo class giao diện mới."""
+        """Hiển thị riêng dữ liệu của Sinh viên, không có quyền chỉnh sửa."""
         cac_muc = ('Sinh viên', 'Phòng', 'Tòa nhà', 'Hợp đồng', 'Hóa đơn tháng', 'Vi phạm')
         if not self.la_sinh_vien() or ten not in cac_muc:
             messagebox.showerror('Không có quyền', 'Chức năng chỉ dành cho tài khoản Sinh viên.', parent=self)
@@ -400,47 +443,111 @@ class App(tk.Tk):
         dau = ttk.Frame(khung, style='KTX.Banner.TFrame', padding=18)
         dau.pack(fill='x', pady=(0, 14))
         ttk.Label(dau, text=ten.upper(), style='KTX.BannerTitle.TLabel').pack(anchor='w')
-        thong_bao = {'Sinh viên': 'Thông tin hồ sơ cá nhân của bạn.', 'Phòng': 'Phòng bạn đang ở theo hợp đồng còn hiệu lực.', 'Tòa nhà': 'Thông tin tòa nhà của phòng bạn đang ở.', 'Hợp đồng': 'Thông tin các hợp đồng của bạn.', 'Hóa đơn tháng': 'Hóa đơn phòng chưa thanh toán trong thời gian hợp đồng của bạn.', 'Vi phạm': 'Các vi phạm của bạn chưa được xử lý.'}
+        thong_bao = {
+            'Sinh viên': 'Thông tin hồ sơ cá nhân của bạn.',
+            'Phòng': 'Phòng bạn đang ở theo hợp đồng còn hiệu lực.',
+            'Tòa nhà': 'Thông tin tòa nhà của phòng bạn đang ở.',
+            'Hợp đồng': 'Thông tin các hợp đồng của bạn.',
+            'Hóa đơn tháng': 'Các hóa đơn phòng trong thời gian hợp đồng của bạn.',
+            'Vi phạm': 'Thông tin các vi phạm liên quan đến bạn.',
+        }
         ttk.Label(dau, text=thong_bao[ten], style='KTX.BannerSub.TLabel').pack(anchor='w', pady=(7, 0))
-        ttk.Button(khung, text='Làm mới', command=lambda: self.hien_thi_trang_sinh_vien(ten)).pack(anchor='e', pady=(0, 10))
+        ttk.Button(khung, text='Làm mới',
+                   command=lambda: self.hien_thi_trang_sinh_vien(ten)).pack(anchor='e', pady=(0, 10))
         try:
             du_lieu = self.lay_du_lieu_ca_nhan()
         except Exception as exc:
             messagebox.showerror('Lỗi tải thông tin', str(exc), parent=self)
             return
 
+        # Dùng một kiểu trình bày cho Sinh viên, Phòng, Tòa nhà và Vi phạm.
+        def hien_thi_the(tieu_de, obj, cac_truong, mau_trang_thai=None, gia_tri_rieng=None):
+            canh_bao = mau_trang_thai == 'do'
+            style_khung = 'KTX.ViPhamDo.TLabelframe' if canh_bao else 'TLabelframe'
+            style_chu = 'KTX.ViPhamDo.TLabel' if canh_bao else 'TLabel'
+            thong_tin = ttk.LabelFrame(khung, text=f'  {tieu_de}  ', padding=16,
+                                       style=style_khung)
+            thong_tin.pack(fill='x', pady=(0, 12))
+            thong_tin.columnconfigure(1, weight=1)
+            for i, (nhan, truong) in enumerate(cac_truong):
+                ttk.Label(thong_tin, text=nhan + ':', font=('Segoe UI', 10, 'bold'),
+                          style=style_chu).grid(row=i, column=0, sticky='nw', padx=(0, 18), pady=6)
+                if gia_tri_rieng is not None and truong in gia_tri_rieng:
+                    gia_tri = gia_tri_rieng[truong]
+                else:
+                    gia_tri = hien_thi(self._gia_tri_ca_nhan(obj, truong))
+                ttk.Label(thong_tin, text=gia_tri or 'Chưa có thông tin',
+                          wraplength=650, justify='left', style=style_chu).grid(
+                              row=i, column=1, sticky='w', pady=6)
+
         if ten == 'Sinh viên':
             sv = du_lieu.get('sinh_vien')
             if sv is None:
                 ttk.Label(khung, text='Chưa tìm thấy hồ sơ sinh viên gắn với tài khoản.').pack(anchor='w')
             else:
-                thong_tin = ttk.LabelFrame(khung, text='  Hồ sơ của tôi  ', padding=16)
-                thong_tin.pack(fill='x')
-                cac_truong = (('Mã sinh viên', 'ma'), ('Họ tên', 'ten'), ('Số điện thoại', 'sdt'), ('Năm sinh', 'nam_sinh'), ('CCCD', 'cccd'), ('Địa chỉ', 'dia_chi_chi_tiet'), ('Tỉnh', 'tinh'), ('Xã', 'xa'))
-                ten_dia_ly = self._ten_tinh_xa_ca_nhan(sv)
-                for i, (nhan, truong) in enumerate(cac_truong):
-                    ttk.Label(thong_tin, text=nhan + ':', font=('Segoe UI', 10, 'bold')).grid(row=i, column=0, sticky='nw', padx=(0, 18), pady=6)
-                    gia_tri = ten_dia_ly[truong] if truong in ten_dia_ly else hien_thi(self._gia_tri_ca_nhan(sv, truong))
-                    ttk.Label(thong_tin, text=gia_tri, wraplength=650).grid(row=i, column=1, sticky='w', pady=6)
+                cac_truong = (
+                    ('Mã sinh viên', 'ma'), ('Họ tên', 'ten'),
+                    ('Số điện thoại', 'sdt'), ('Năm sinh', 'nam_sinh'),
+                    ('CCCD', 'cccd'), ('Địa chỉ', 'dia_chi_chi_tiet'),
+                    ('Tỉnh', 'tinh'), ('Xã', 'xa'),
+                )
+                hien_thi_the('Hồ sơ của tôi', sv, cac_truong,
+                             gia_tri_rieng=self._ten_tinh_xa_ca_nhan(sv))
+
+        elif ten in ('Phòng', 'Tòa nhà', 'Vi phạm'):
+            cac_muc_the = {
+                'Phòng': ('phong', 'Phòng đang ở', (
+                    ('Mã phòng', 'ma'), ('Tên phòng', 'ten'),
+                    ('Mã tòa nhà', 'toa_nha'), ('Tầng', 'tang'),
+                    ('Sức chứa', 'suc_chua'), ('Giá phòng', 'gia_phong'))),
+                'Tòa nhà': ('toa_nha', 'Tòa nhà đang ở', (
+                    ('Mã tòa nhà', 'ma'), ('Tên tòa nhà', 'ten'),
+                    ('Số tầng', 'so_tang'))),
+                'Vi phạm': ('vi_pham', 'Vi phạm', (
+                    ('Mã vi phạm', 'ma'), ('Ngày vi phạm', 'ngay_vi_pham'),
+                    ('Mô tả', 'mo_ta'), ('Hình thức kỷ luật', 'hinh_thuc_ky_luat'),
+                    ('Trạng thái', 'trang_thai'))),
+            }
+            khoa, tieu_de, cac_truong = cac_muc_the[ten]
+            ds = du_lieu.get(khoa, [])
+            if not ds:
+                ttk.Label(khung, text='Không có dữ liệu phù hợp.',
+                          style='KTX.Muted.TLabel').pack(anchor='w', pady=10)
+            else:
+                # Các mục chỉ xem nên hiển thị thông tin theo hàng như hồ sơ Sinh viên.
+                self._cap_nhat_mau_ca_nhan()
+                for i, obj in enumerate(ds, start=1):
+                    ten_the = tieu_de if ten != 'Vi phạm' else f'{tieu_de} {i}'
+                    hien_thi_the(ten_the, obj, cac_truong,
+                                 mau_trang_thai=self._mau_trang_thai_ca_nhan(ten, obj))
+
         else:
+            # Hợp đồng và Hóa đơn vẫn là bảng để dễ theo dõi nhiều bản ghi.
             cau_hinh_bang = {
-                'Phòng': ('phong', (('ma', 'Mã phòng'), ('ten', 'Tên phòng'), ('toa_nha', 'Mã tòa nhà'), ('tang', 'Tầng'), ('suc_chua', 'Sức chứa'), ('gia_phong', 'Giá phòng'))),
-                'Tòa nhà': ('toa_nha', (('ma', 'Mã tòa nhà'), ('ten', 'Tên tòa nhà'), ('so_tang', 'Số tầng'))),
-                'Hợp đồng': ('hop_dong', (('ma', 'Mã hợp đồng'), ('ma_phong', 'Mã phòng'), ('ngay_ky', 'Ngày ký'), ('ngay_bat_dau', 'Ngày bắt đầu'), ('ngay_ket_thuc', 'Ngày kết thúc'), ('trang_thai', 'Trạng thái'))),
-                'Hóa đơn tháng': ('hoa_don', (('ma', 'Mã hóa đơn'), ('thang_nam', 'Tháng/năm'), ('phong', 'Phòng'), ('han_chot', 'Hạn chót'), ('dien_cu', 'Điện cũ'), ('dien_moi', 'Điện mới'), ('nuoc_cu', 'Nước cũ'), ('nuoc_moi', 'Nước mới'), ('trang_thai', 'Trạng thái'))),
-                'Vi phạm': ('vi_pham', (('ma', 'Mã vi phạm'), ('ngay_vi_pham', 'Ngày vi phạm'), ('mo_ta', 'Mô tả'), ('hinh_thuc_ky_luat', 'Kỷ luật'), ('trang_thai', 'Trạng thái')))
+                'Hợp đồng': ('hop_dong', (
+                    ('ma', 'Mã hợp đồng'), ('ma_phong', 'Mã phòng'),
+                    ('ngay_ky', 'Ngày ký'), ('ngay_bat_dau', 'Ngày bắt đầu'),
+                    ('ngay_ket_thuc', 'Ngày kết thúc'), ('trang_thai', 'Trạng thái'))),
+                'Hóa đơn tháng': ('hoa_don', (
+                    ('ma', 'Mã hóa đơn'), ('thang_nam', 'Tháng/năm'),
+                    ('phong', 'Phòng'), ('han_chot', 'Hạn chót'),
+                    ('dien_cu', 'Điện cũ'), ('dien_moi', 'Điện mới'),
+                    ('nuoc_cu', 'Nước cũ'), ('nuoc_moi', 'Nước mới'),
+                    ('trang_thai', 'Trạng thái'))),
             }
             khoa, cot = cau_hinh_bang[ten]
             ds = du_lieu.get(khoa, [])
             if not ds:
-                ttk.Label(khung, text='Không có dữ liệu phù hợp.', style='KTX.Muted.TLabel').pack(anchor='w', pady=10)
+                ttk.Label(khung, text='Không có dữ liệu phù hợp.',
+                          style='KTX.Muted.TLabel').pack(anchor='w', pady=10)
             else:
                 vung = ttk.Frame(khung)
                 vung.pack(fill='both', expand=True)
                 vung.columnconfigure(0, weight=1)
                 vung.rowconfigure(0, weight=1)
                 truong = tuple(t for t, _ in cot)
-                bang = ttk.Treeview(vung, columns=truong, show='headings', height=12, style='KTX.Treeview', selectmode='browse')
+                bang = ttk.Treeview(vung, columns=truong, show='headings',
+                                    height=12, style='KTX.Treeview', selectmode='browse')
                 for t, nhan in cot:
                     bang.heading(t, text=nhan)
                     bang.column(t, width=165, minwidth=105, anchor='w')
@@ -451,9 +558,13 @@ class App(tk.Tk):
                 doc.grid(row=0, column=1, sticky='ns')
                 ngang.grid(row=1, column=0, sticky='ew')
                 self._bang_sinh_vien.append(bang)
-                for i, obj in enumerate(ds):
-                    bang.insert('', 'end', values=tuple(hien_thi(self._gia_tri_ca_nhan(obj, t)) for t in truong), tags=('chan' if i % 2 == 0 else 'le',))
+                for obj in ds:
+                    mau = self._mau_trang_thai_ca_nhan(ten, obj)
+                    bang.insert('', 'end',
+                                values=tuple(hien_thi(self._gia_tri_ca_nhan(obj, t)) for t in truong),
+                                tags=(mau or 'chan',))
                 self._cap_nhat_mau_ca_nhan()
+
         for ten_nut, nut in self.nut_menu.items():
             nut.configure(style='SelectedSidebar.TButton' if ten_nut == ten else 'Sidebar.TButton')
         self.canvas_noi_dung.yview_moveto(0)
@@ -617,11 +728,9 @@ class App(tk.Tk):
         if phong is not None:
             toa_nha = tat_ca_toa_nha.get(phong.toa_nha)
 
-        # 4. Hóa đơn chưa thanh toán, đúng phòng, và tháng nằm trong thời gian của một hợp đồng.
+        # 4. Mọi hóa đơn (đã/chưa thanh toán) đúng phòng, trong thời gian hợp đồng.
         hoa_don = []
         for hdon in tat_ca_hoa_don.values():
-            if hdon.trang_thai != TrangThaiHoaDon.CHUA_THANH_TOAN:
-                continue
             thang_hoa_don = str(hdon.thang_nam)  # dạng '2026-03'
             for hd in hop_dong:
                 thang_dau = hd.ngay_bat_dau.strftime('%Y-%m')  # đổi ngày thành dạng 'năm-tháng' để so sánh
@@ -630,10 +739,10 @@ class App(tk.Tk):
                     hoa_don.append(hdon)
                     break  # khớp một hợp đồng là đủ, khỏi xét tiếp
 
-        # 5. Vi phạm chưa xử lý
+        # 5. Các vi phạm của sinh viên, gồm cả đã và chưa xử lý.
         vi_pham = []
         for vp in tat_ca_vi_pham.values():
-            if vp.sinh_vien == ma and vp.trang_thai == TrangThaiViPham.CHUA_XU_LY:
+            if vp.sinh_vien == ma:
                 vi_pham.append(vp)
 
         return {
