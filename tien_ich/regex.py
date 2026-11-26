@@ -127,10 +127,9 @@ def la_ten_dang_nhap(x: str) -> bool:
     """Tên đăng nhập: 3-30 ký tự gồm chữ cái không dấu, chữ số, dấu gạch dưới hoặc dấu chấm."""
     return isinstance(x, str) and re.fullmatch(r"[A-Za-z0-9_.]{3,30}", x) is not None
 
-def la_mat_khau(x: str) -> bool:
-    """
-    Mật khẩu: tối thiểu 6 ký tự, chỉ gồm ký tự tiếng Anh (chữ cái không dấu, chữ số, ký hiệu thông dụng).
-    Không chấp nhận chữ có dấu (á, ê, ư...) và khoảng trắng.
-    """
-    # \x21-\x7E là dải ký tự ASCII hiển thị được (từ "!" đến "~"), nên mọi chữ có dấu đều bị loại
-    return isinstance(x, str) and re.fullmatch(r"[\x21-\x7E]{6,}", x) is not None
+
+# Tối thiểu 5 ký tự; chỉ gồm chữ cái tiếng Anh không dấu và chữ số
+_MAT_KHAU = re.compile(r"[A-Za-z0-9]{5,}")
+
+def la_mat_khau(mat_khau: str) -> bool:
+    return isinstance(mat_khau, str) and _MAT_KHAU.fullmatch(mat_khau) is not None

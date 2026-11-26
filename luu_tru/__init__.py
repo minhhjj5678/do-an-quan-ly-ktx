@@ -2,7 +2,6 @@
 # Gom các lớp lưu trữ để có thể import ngắn gọn: from luu_tru import LuuTruSinhVien
 # (import đầy đủ như from luu_tru.luu_tru_sinh_vien import LuuTruSinhVien vẫn dùng được).
 # Mỗi tên ở đây phải trỏ đúng tên FILE thật trong thư mục luu_tru/.
-from .luu_tru_json import LuuTruJson
 from .luu_tru_sinh_vien import LuuTruSinhVien
 from .luu_tru_phong import LuuTruPhong
 from .luu_tru_toa_nha import LuuTruToaNha
