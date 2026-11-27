@@ -164,6 +164,9 @@ class ManHinhPhong(ManHinhDanhMucCoSo):
             self._mau_thong_ke = (
                 '#2B405C', '#294B44', '#403958', '#4B4031'
             )
+            self._mau_do_the = '#66343D'
+            self._mau_do_vien = '#EF8790'
+            self._mau_do_chu = '#FFF0F1'
         else:
             self._mau_the = '#EAF4FF'
             self._mau_vien = '#BAD6F2'
@@ -173,6 +176,9 @@ class ManHinhPhong(ManHinhDanhMucCoSo):
             self._mau_thong_ke = (
                 '#E8F1FF', '#E7F6EE', '#F1EDFF', '#FFF1E4'
             )
+            self._mau_do_the = '#FBE2E2'
+            self._mau_do_vien = '#C24141'
+            self._mau_do_chu = '#962626'
 
         style.configure('PhongPage.TLabel', font=('Segoe UI', 20, 'bold'))
         style.configure('PhongSection.TLabel', font=('Segoe UI', 12, 'bold'))
@@ -181,6 +187,11 @@ class ManHinhPhong(ManHinhDanhMucCoSo):
         try:
             ket_qua = self.app.dieu_phoi.lay_tat_ca(self.LOAI, lay_luu_tru=self.doc_luu_tru())
             self._tat_ca_phong = list(ket_qua.values()) # type: ignore
+            self._nguoi_theo_phong = self._sinh_vien_dang_o_theo_phong()
+            self._phong_day = {
+                str(p.ma) for p in self._tat_ca_phong
+                if len(self._nguoi_theo_phong.get(str(p.ma), [])) >= p.suc_chua
+            }
             self._cap_nhat_bo_loc()
             self._cap_nhat_thong_ke()
             self.tim_kiem()
@@ -263,11 +274,15 @@ class ManHinhPhong(ManHinhDanhMucCoSo):
 
     def _tao_the_phong(self, p):
         ma = str(p.ma)
+        phong_day = ma in getattr(self, '_phong_day', set())
+        mau_the = self._mau_do_the if phong_day else self._mau_the
+        mau_vien = self._mau_do_vien if phong_day else self._mau_vien
+        mau_chu = self._mau_do_chu if phong_day else self._mau_chu
         the = tk.Frame(
-            self.khung_the, bg=self._mau_the,
+            self.khung_the, bg=mau_the,
             padx=14, pady=14,
             highlightthickness=2,
-            highlightbackground=self._mau_vien,
+            highlightbackground=mau_vien,
             highlightcolor=self._mau_chon
         )
         nhan = []
@@ -282,15 +297,15 @@ class ManHinhPhong(ManHinhDanhMucCoSo):
         for i, noi_dung in enumerate(thong_tin):
             lbl = tk.Label(
                 the, text=noi_dung,
-                bg=self._mau_the,
-                fg=self._mau_chu if i == 0 else self._mau_phu,
+                bg=mau_the,
+                fg=mau_chu if i == 0 else (mau_chu if phong_day else self._mau_phu),
                 font=('Segoe UI', 13, 'bold') if i == 0 else ('Segoe UI', 10),
                 anchor='w', justify='left', wraplength=270
             )
             lbl.pack(anchor='w', fill='x', pady=(2 if i else 0, 4))
             nhan.append(lbl)
 
-        nut = tk.Frame(the, bg=self._mau_the)
+        nut = tk.Frame(the, bg=mau_the)
         nut.pack(fill='x', pady=(12, 0))
         ttk.Button(
             nut, text='Chi tiết',
@@ -326,7 +341,9 @@ class ManHinhPhong(ManHinhDanhMucCoSo):
         for the, ma_the in self._the_phong:
             the.configure(
                 highlightbackground=(
-                    self._mau_chon if ma == ma_the else self._mau_vien
+                    self._mau_chon if ma == ma_the else
+                    (self._mau_do_vien if ma_the in getattr(self, '_phong_day', set())
+                     else self._mau_vien)
                 )
             )
 

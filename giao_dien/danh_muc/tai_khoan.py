@@ -2,7 +2,7 @@
 
 - Bố cục danh sách: tìm kiếm, thêm mới, chi tiết, chỉnh sửa và xóa.
 - Chọn tài khoản trực tiếp trên bảng, không có Hộp tài khoản riêng.
-- Quản trị tài khoản vẫn đi qua Adapter/GiaoThucPhienLamViec.
+- Quản trị tài khoản gọi trực tiếp điều phối và phiên làm việc.
 - Đặt lại mật khẩu mặc định và bật/tắt trạng thái ở cửa sổ Chi tiết.
 - Không dùng CRUD thực thể TaiKhoan.
 """
@@ -120,9 +120,6 @@ class ManHinhTaiKhoan(ttk.Frame):
             hanh_dong, text='Xem chi tiết', command=self.xem_chi_tiet
         ).pack(side='left', padx=(0, 7))
         ttk.Button(
-            hanh_dong, text='Đặt lại mật khẩu', command=self.xem_chi_tiet
-        ).pack(side='left', padx=(0, 7))
-        ttk.Button(
             hanh_dong, text='Xóa', style='KTX.Danger.TButton',
             command=self.xoa_tai_khoan
         ).pack(side='left')
@@ -175,7 +172,11 @@ class ManHinhTaiKhoan(ttk.Frame):
             self.canvas.configure(bg=mau['nen'])
         if hasattr(self, 'bang'):
             self.bang.tag_configure('chan', background=mau['the'], foreground=mau['chu'])
-            self.bang.tag_configure('le', background=mau['nhat'], foreground=mau['chu'])
+            self.bang.tag_configure('le', background=mau['the'], foreground=mau['chu'])
+            if getattr(self.winfo_toplevel(), 'chu_de_hien_tai', 'LIGHT') == 'DARK':
+                self.bang.tag_configure('do', background='#67353B', foreground='#FFF1F1')
+            else:
+                self.bang.tag_configure('do', background='#FBE2E2', foreground='#9F2525')
 
     def tai_du_lieu(self, tu_khoa=''):
         if not hasattr(self, 'bang'):
@@ -203,7 +204,8 @@ class ManHinhTaiKhoan(ttk.Frame):
             if tu_khoa and not any(tu_khoa in str(x).casefold() for x in gia_tri):
                 continue
             self.bang.insert('', 'end', iid=ten, values=gia_tri,
-                             tags=('chan' if dem % 2 == 0 else 'le',))
+                             tags=('do' if thong_tin['trang_thai'] == 'Ngưng hoạt động'
+                                   else ('chan' if dem % 2 == 0 else 'le'),))
             dem += 1
         self.lbl_so_luong.configure(text=f'Hiển thị {dem} tài khoản')
 
@@ -424,8 +426,8 @@ class ManHinhTaiKhoan(ttk.Frame):
     def mo_chi_tiet(self, ten):
         cua_so = tk.Toplevel(self)
         cua_so.title('Chi tiết tài khoản')
-        cua_so.geometry('700x720')
-        cua_so.minsize(520, 460)
+        cua_so.geometry('530x460')
+        cua_so.minsize(460, 370)
         cua_so.transient(self.winfo_toplevel())
         cua_so.grab_set()
 
@@ -478,8 +480,6 @@ class ManHinhTaiKhoan(ttk.Frame):
         ).pack(anchor='e', pady=(16, 2))
 
     def tao_khu_vuc_dat_lai_mat_khau(self, parent, cua_so, ten):
-        khung = ttk.LabelFrame(parent, text='  Đặt lại mật khẩu  ', padding=12)
-        khung.pack(fill='x', pady=(14, 8))
         def reset():
             if len(ten) < 6:
                 messagebox.showwarning('Không thể đặt mật khẩu mặc định',
@@ -493,14 +493,13 @@ class ManHinhTaiKhoan(ttk.Frame):
             except Exception as exc:
                 messagebox.showerror('Lỗi đặt lại mật khẩu', str(exc), parent=cua_so)
 
-        ttk.Button(khung, text='Đặt lại mật khẩu',
-                   style='KTX.Primary.TButton', command=reset).pack(anchor='e')
+        ttk.Button(parent, text='Đặt lại mật khẩu',
+                   style='KTX.Primary.TButton', command=reset).pack(anchor='w', pady=(16, 6))
 
     def tao_khu_vuc_trang_thai_tai_khoan(self, parent, cua_so, ten, bien_trang_thai):
-        khung = ttk.LabelFrame(parent, text='  Trạng thái tài khoản  ', padding=12)
-        khung.pack(fill='x', pady=8)
-        hang = ttk.Frame(khung)
-        hang.pack(fill='x')
+        # Đặt nút Ngừng/Kích hoạt ngay dưới nút Đặt lại mật khẩu.
+        hang = ttk.Frame(parent)
+        hang.pack(anchor='w')
 
         def hien_nut():
             for con in hang.winfo_children():

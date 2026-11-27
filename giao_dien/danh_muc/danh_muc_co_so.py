@@ -1,9 +1,10 @@
-﻿"""Màn hình danh mục dùng chung: giao diện, tìm kiếm và CRUD qua Adapter.
+﻿"""Màn hình danh mục dùng chung: giao diện, tìm kiếm và CRUD qua điều phối.
 
 Các màn hình con chỉ cần khai báo LOAI, TRUONG, BAT_BUOC.
 Nếu chưa biết tên trường, chương trình đọc các tham số của __init__.
 """
 import inspect
+import unicodedata
 import tkinter as tk
 from datetime import date, datetime
 from enum import Enum
@@ -29,7 +30,7 @@ class ManHinhDanhMucCoSo(ttk.Frame):
     CHO_PHEP_XOA = True
     CHO_PHEP_SUA = True
     TRUONG_CHI_DOC_KHI_TAO = {"trang_thai"}
-    NGHIEP_VU_CHI_TIET: tuple[tuple[str, str], ...] = ()  # (Tên nút, tên nghiệp vụ Adapter)
+    NGHIEP_VU_CHI_TIET: tuple[tuple[str, str], ...] = ()  # (Tên nút, tên nghiệp vụ điều phối)
 
     def __init__(self, parent, app):
         super().__init__(parent, padding=12)
@@ -117,7 +118,55 @@ class ManHinhDanhMucCoSo(ttk.Frame):
         if hasattr(self, 'bang'):
             mau = lay_mau(getattr(self.winfo_toplevel(), 'chu_de_hien_tai', 'LIGHT'))
             self.bang.tag_configure('chan', background=mau['the'], foreground=mau['chu'])
-            self.bang.tag_configure('le', background=mau['nhat'], foreground=mau['chu'])
+            self.bang.tag_configure('le', background=mau['the'], foreground=mau['chu'])
+            # Mọi dòng bình thường đều dùng cùng nền trung tính; chỉ trạng thái đặc biệt mới tô màu.
+            self.bang.tag_configure('chua_thanh_toan', background=mau['the'], foreground=mau['chu'])
+            # Hai màu trạng thái: đỏ/cảnh báo, xanh/đã thanh toán.
+            if getattr(self.winfo_toplevel(), 'chu_de_hien_tai', 'LIGHT') == 'DARK':
+                self.bang.tag_configure('do', background='#67353B', foreground='#FFF1F1')
+                self.bang.tag_configure('xanh', background='#244E42', foreground='#E8FFF2')
+            else:
+                self.bang.tag_configure('do', background='#FBE2E2', foreground='#9F2525')
+                self.bang.tag_configure('xanh', background='#DDF3E6', foreground='#17623C')
+
+    @staticmethod
+    def _trang_thai_khong_dau(trang_thai):
+        # Đọc cả Enum lẫn chuỗi; bỏ dấu để so trạng thái ổn định.
+        if isinstance(trang_thai, Enum):
+            trang_thai = trang_thai.name
+        chuoi = unicodedata.normalize('NFD', str(trang_thai).casefold())
+        return ''.join(ky_tu for ky_tu in chuoi
+                       if unicodedata.category(ky_tu) != 'Mn').replace('đ', 'd').replace('_', ' ')
+
+    def _mau_trang_thai(self, obj):
+        # Trả về tên tag màu cho trạng thái; None giữ màu dòng mặc định.
+        trang_thai = self._trang_thai_khong_dau(self.lay_gia_tri(obj, 'trang_thai'))
+        if self.LOAI is HopDong:
+            if 'ket thuc' in trang_thai or 'het han' in trang_thai:
+                return 'do'
+            if 'da thanh toan' in trang_thai:
+                return 'xanh'
+            if 'chua thanh toan' in trang_thai:
+                return 'chua_thanh_toan'
+        elif self.LOAI is HoaDonThang:
+            if 'da thanh toan' in trang_thai:
+                return 'xanh'
+            if 'chua thanh toan' in trang_thai:
+                return 'chua_thanh_toan'
+        elif self.LOAI is ViPham:
+            if 'chua xu ly' in trang_thai or 'chua xu li' in trang_thai:
+                return 'do'
+        return None
+
+    def _sinh_vien_dang_o_theo_phong(self):
+        # Đếm mỗi mã SV một lần qua các hợp đồng đang có hiệu lực.
+        hom_nay = date.today()
+        hop_dong = self.app.dieu_phoi.lay_tat_ca(HopDong, lay_luu_tru=True)
+        ket_qua: dict[str, set[str]] = {}
+        for hd in hop_dong.values():
+            if hd.ngay_bat_dau <= hom_nay and hd.con_giu_cho(hom_nay):
+                ket_qua.setdefault(str(hd.ma_phong), set()).add(str(hd.ma_sinh_vien))
+        return {ma: sorted(cac_ma) for ma, cac_ma in ket_qua.items()}
 
     def tao_giao_dien(self):
         self._tao_kieu_nut()
@@ -204,8 +253,9 @@ class ManHinhDanhMucCoSo(ttk.Frame):
             if not ma:
                 continue
             values = [hien_thi(self.lay_gia_tri(obj, t)) for t in self.TRUONG]
+            mau_trang_thai = self._mau_trang_thai(obj)
             self.bang.insert('', 'end', iid=ma, values=values,
-                             tags=('chan' if i % 2 == 0 else 'le',))
+                             tags=(mau_trang_thai or ('chan' if i % 2 == 0 else 'le'),))
         self.lbl_so_luong.configure(text=f'Hiển thị {len(self.bang.get_children())} bản ghi')
 
     def tai_du_lieu(self):
@@ -246,9 +296,35 @@ class ManHinhDanhMucCoSo(ttk.Frame):
         try:
             self.app.yeu_cau_admin()
             obj = self.app.dieu_phoi.lay_theo_ma(self.LOAI, ma, lay_luu_tru=self.doc_luu_tru())
-            noidung = '\n'.join(f'{self.ten_truong(t)}: '
-                                f'{hien_thi(self.lay_gia_tri(obj, t))}'
-                                for t in self.TRUONG)
+            # Giữ dữ liệu thật là mã, chỉ chuyển sang tên khi hiển thị Chi tiết.
+            ten_dia_ly = (self.app._ten_tinh_xa_ca_nhan(obj)
+                          if self.LOAI is SinhVien else {})
+            dong = []
+            for truong in self.TRUONG:
+                gia_tri = (ten_dia_ly[truong] if truong in ten_dia_ly
+                           else hien_thi(self.lay_gia_tri(obj, truong)))
+                dong.append(f'{self.ten_truong(truong)}: {gia_tri}')
+
+            if self.LOAI is SinhVien:
+                ma_sv = str(self.lay_gia_tri(obj, 'ma'))
+                hop_dong = self.app.dieu_phoi.lay_tat_ca(HopDong, lay_luu_tru=True)
+                hom_nay = date.today()
+                dang_o = [hd for hd in hop_dong.values()
+                           if str(hd.ma_sinh_vien) == ma_sv
+                           and hd.ngay_bat_dau <= hom_nay and hd.con_giu_cho(hom_nay)]
+                if dang_o:
+                    hd = max(dang_o, key=lambda h: h.ngay_bat_dau)
+                    phong = self.app.dieu_phoi.lay_theo_ma(Phong, hd.ma_phong)
+                    dong.append(f'Phòng đang ở: {phong.ten} ({hd.ma_phong})')
+                else:
+                    dong.append('Phòng đang ở: Chưa có')
+            elif self.LOAI is Phong:
+                ma_phong = str(self.lay_gia_tri(obj, 'ma'))
+                cac_ma = self._sinh_vien_dang_o_theo_phong().get(ma_phong, [])
+                dong.append(f'Sinh viên đang ở ({len(cac_ma)}/{obj.suc_chua}): '
+                            + (', '.join(cac_ma) if cac_ma else 'Chưa có'))
+
+            noidung = '\n'.join(dong)
             if not self.NGHIEP_VU_CHI_TIET:
                 messagebox.showinfo('Chi tiết', noidung, parent=self.winfo_toplevel())
                 return
